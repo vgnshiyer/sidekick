@@ -1,0 +1,8 @@
+#!/bin/sh
+# Sidekick's Codex hook: forward the hook payload on stdin to the Sidekick bridge.
+# Installed as <Sidekick home>/bin/codex-hook, so the bridge socket is <Sidekick home>/bridge.sock.
+# It always exits 0 within about a second and prints nothing, so Codex never waits on it or shows
+# its output, whether or not Sidekick is running. curl reads all of stdin before it connects.
+/usr/bin/curl --unix-socket "${0%/bin/*}/bridge.sock" -s -m 1 -o /dev/null \
+  -H 'Content-Type: application/json' --data-binary @- http://sidekick/codex/hook >/dev/null 2>&1
+exit 0

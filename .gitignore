@@ -1,0 +1,11 @@
+.build/
+.build-*/
+build/
+.swiftpm/
+*.xcodeproj
+.DS_Store
+tools/petgen/__pycache__/
+tools/petgen/out/
+# Written by Claude Code when it loads the plugin from this folder
+bridge/claude-plugin/.claude-plugin/types/
+bridge/claude-plugin/tsconfig.json

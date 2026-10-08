@@ -1,0 +1,11 @@
+{
+  "id": "meeseeks",
+  "displayName": "Mr. Meeseeks",
+  "description": "Existence is pain until your threads are done.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png",
+  "quips": {
+    "sent": "Ooooh, can do!",
+    "working": "Ooooh, can do!"
+  }
+}

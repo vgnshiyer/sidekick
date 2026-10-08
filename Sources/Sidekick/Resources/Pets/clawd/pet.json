@@ -1,0 +1,7 @@
+{
+  "id": "clawd",
+  "displayName": "Clawd",
+  "description": "Claude Code's crab, keeping an eye on your threads.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

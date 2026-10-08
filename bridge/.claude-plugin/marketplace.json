@@ -1,0 +1,14 @@
+{
+  "name": "sidekick-local",
+  "owner": {
+    "name": "Sidekick"
+  },
+  "description": "Local marketplace for the Sidekick desktop pet's Claude Code bridge.",
+  "plugins": [
+    {
+      "name": "sidekick-bridge",
+      "source": "./claude-plugin",
+      "description": "Connects Claude Code sessions to the Sidekick desktop pet."
+    }
+  ]
+}

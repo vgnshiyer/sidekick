@@ -1,0 +1,7 @@
+{
+  "id": "ghost",
+  "displayName": "Ghost",
+  "description": "A friendly terminal ghost with a blinking cursor.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

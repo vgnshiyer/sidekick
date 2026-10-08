@@ -1,0 +1,8 @@
+{
+  "name": "sidekick-bridge",
+  "version": "0.1.0",
+  "description": "Connects this session to the Sidekick desktop pet: runs prompts sent from the pet and reports turn start and end.",
+  "author": {
+    "name": "Sidekick"
+  }
+}

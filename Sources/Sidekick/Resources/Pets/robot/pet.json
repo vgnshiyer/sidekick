@@ -1,0 +1,7 @@
+{
+  "id": "robot",
+  "displayName": "Robot",
+  "description": "A tiny robot whose antenna tells you when you're needed.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "cat",
+  "displayName": "Cat",
+  "description": "Kneads your keyboard while the agents work.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}
