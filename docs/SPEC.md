@@ -153,7 +153,7 @@ The bar is high: native macOS polish that fits macOS 26.
   - Title: 13 pt semibold, one line.
   - Subtitle: 11.5 pt secondary, one line.
   - Status chip: colored dot plus label (amber Needs input, red Failed, green Ready, blue animated Running, gray Idle).
-  - Platform badge: 18 pt, the app's own icon read at runtime from the installed app (Claude.app; Codex's cloud from ChatGPT.app's `app.icns`), never bundled. Without the app, a drawn circle: Claude orange #D97757 or Codex near-black, with a simple glyph.
+  - Platform badge: 18 pt, the app's own logo read at runtime from the installed app (Claude's star from Claude.app's menu-bar icon, tinted Claude orange; Codex's cloud from ChatGPT.app's `app.icns`), never bundled. Without the app, a drawn circle: Claude orange #D97757 or Codex near-black, with a simple glyph.
   - The bubble nearest the pet has a small speech tail pointing at the pet.
   - Light and dark mode.
 - **Chat panel.** About 360x440, same material.

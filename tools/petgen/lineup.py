@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Family lineups: the six pets side by side, one row per animation row.
+"""Family lineups: every petgen pet side by side, one row per animation row.
 
     python3 tools/petgen/lineup.py            # out/family_light.png, out/family_dark.png
     python3 tools/petgen/lineup.py waving DIR # DIR/lineup_waving.png: every frame of one row, x3
@@ -18,7 +18,7 @@ import petgen as P  # noqa: E402
 sys.modules.setdefault("petgen", P)
 
 # Mr. Meeseeks is built by ballpet.swift, not petgen, so it has no pet module here.
-PETS = ["clawd", "ghost", "cat", "robot", "capybara"]
+PETS = ["clawd", "ghost", "cat", "robot", "capybara", "duck", "hamster", "octopus"]
 BGS = {"light": "#F4F4F6", "dark": P.DARK_BG}
 GAP = 4
 

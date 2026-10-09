@@ -115,9 +115,16 @@ final class PetOverlayView: NSView {
         return trayModel.bubbleFrames.first { $0.value.intersection(trayHost.bounds).contains(local) }?.key
     }
 
-    /// On a visible part of a bubble.
+    /// Anywhere on the visible stack of bubbles, the gaps between them included, so a scroll that
+    /// slides a gap under a still pointer keeps scrolling the tray instead of the window behind it.
     func bubbleContains(_ point: NSPoint) -> Bool {
-        bubble(at: point) != nil
+        guard !trayHost.isHidden, trayHost.frame.contains(point) else { return false }
+        let local = trayHost.convert(point, from: self)
+        let stack = trayModel.bubbleFrames.values
+            .map { $0.intersection(trayHost.bounds) }
+            .filter { !$0.isNull && !$0.isEmpty }
+            .reduce(CGRect.null) { $0.union($1) }
+        return stack.contains(local)
     }
 
     /// A bubble's frame in screen coordinates.
@@ -129,7 +136,9 @@ final class PetOverlayView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         if petContains(local) { return spriteView }
-        if bubbleContains(local) { return trayHost.hitTest(local) }
+        // The panel only takes the mouse over the bubbles (or for the rest of a scroll that began
+        // there), so anything that reaches the tray's area belongs to its scroll view.
+        if !trayHost.isHidden, trayHost.frame.contains(local) { return trayHost.hitTest(local) }
         return nil
     }
 }

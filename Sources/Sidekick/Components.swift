@@ -2,7 +2,8 @@ import AppKit
 import SidekickCore
 import SwiftUI
 
-/// The platform's app icon, read from the installed app; a drawn mark when the app isn't there.
+/// The platform's logo, read from the installed app: Claude's orange star, Codex's cloud. A drawn
+/// mark when the app isn't there.
 struct PlatformBadge: View {
     let platform: Platform
     var size: CGFloat = 18
@@ -20,16 +21,20 @@ struct PlatformBadge: View {
     }
 }
 
-/// An app icon loaded at runtime from the user's installed app, never bundled: the artwork is
-/// the apps' own. Loaded once per platform.
+/// A logo loaded at runtime from the user's installed app, never bundled: the artwork is the
+/// apps' own. Loaded once per platform.
 @MainActor
 struct PlatformIcon {
     let image: NSImage
-    /// Transparent margin around the artwork, per side, as a share of the image's width.
+    /// How far the image spills past the badge on each side, as a share of its width: an app
+    /// icon's transparent margin, or the tips of the star's rays.
     let margin: CGFloat
 
     /// A finished macOS icon: a rounded tile inside the standard margin.
     private static let appIconMargin: CGFloat = 0.1
+    /// The star is thin rays, lighter than the cloud at the same size: drawn a little larger so
+    /// the two weigh the same.
+    private static let starMargin: CGFloat = 0.04
 
     static func icon(for platform: Platform) -> PlatformIcon? {
         switch platform {
@@ -38,8 +43,14 @@ struct PlatformIcon {
         }
     }
 
-    private static let claude = app(bundleId: "com.anthropic.claudefordesktop", path: "/Applications/Claude.app")
-        .map { PlatformIcon(image: NSWorkspace.shared.icon(forFile: $0.path), margin: appIconMargin) }
+    /// Claude's star from its menu-bar icon; the app icon (the star on an orange tile) without one.
+    private static let claude: PlatformIcon? = {
+        guard let app = app(bundleId: "com.anthropic.claudefordesktop", path: "/Applications/Claude.app") else {
+            return nil
+        }
+        if let star = star(in: app) { return PlatformIcon(image: star, margin: starMargin) }
+        return PlatformIcon(image: NSWorkspace.shared.icon(forFile: app.path), margin: appIconMargin)
+    }()
 
     /// The Codex desktop app ships as ChatGPT.app. Its own icon is the ChatGPT one; the Codex cloud is `app.icns`.
     private static let codex: PlatformIcon? = {
@@ -56,6 +67,41 @@ struct PlatformIcon {
     private static func app(bundleId: String, path: String) -> URL? {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) { return url }
         return FileManager.default.fileExists(atPath: path) ? URL(fileURLWithPath: path) : nil
+    }
+
+    /// Claude.app's menu-bar icon is the star alone, black on clear (a template image). Takes the
+    /// sharpest copy, fills the star with Claude orange and crops to it.
+    private static func star(in app: URL) -> NSImage? {
+        let resources = app.appendingPathComponent("Contents/Resources")
+        let template = ["@3x", "@2x", ""].lazy
+            .compactMap { try? Data(contentsOf: resources.appendingPathComponent("TrayIconTemplate\($0).png")) }
+            .compactMap { NSBitmapImageRep(data: $0)?.cgImage }
+            .first
+        guard let template,
+              let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(
+                  data: nil, width: template.width, height: template.height, bitsPerComponent: 8,
+                  bytesPerRow: template.width * 4, space: space,
+                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = context.data
+        else { return nil }
+        let (width, height) = (template.width, template.height)
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        context.draw(template, in: bounds)
+        // Orange wherever the star is, at the star's own alpha.
+        context.setBlendMode(.sourceAtop)
+        context.setFillColor(NSColor(.claudeOrange).cgColor)
+        context.fill(bounds)
+
+        let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where pixels[(y * width + x) * 4 + 3] > 0 {
+                (minX, maxX, minY, maxY) = (min(minX, x), max(maxX, x), min(minY, y), max(maxY, y))
+            }
+        }
+        guard maxX >= minX, let star = context.makeImage() else { return nil }
+        return square(star, x: minX...maxX, y: minY...maxY)
     }
 
     /// Codex's `app.icns` is the cloud on an opaque white square. Clears the white that reaches the
@@ -111,23 +157,29 @@ struct PlatformIcon {
             }
         }
         guard maxX >= minX, let cleared = context.makeImage() else { return nil }
+        return square(cleared, x: minX...maxX, y: minY...maxY)
+    }
 
-        // A square around the cloud, centered on it, and kept inside the image.
-        let length = max(maxX - minX, maxY - minY) + 1
-        func origin(_ low: Int, _ high: Int) -> Int { min(max((low + high + 1 - length) / 2, 0), side - length) }
-        let crop = CGRect(x: origin(minX, maxX), y: origin(minY, maxY), width: length, height: length)
-        guard let cloud = cleared.cropping(to: crop) else { return nil }
-        return NSImage(cgImage: cloud, size: NSSize(width: length, height: length))
+    /// A square of `image` around the artwork spanning `x` by `y` (pixels, from the top left),
+    /// centered on it and kept inside the image.
+    private static func square(_ image: CGImage, x: ClosedRange<Int>, y: ClosedRange<Int>) -> NSImage? {
+        let length = max(x.count, y.count)
+        func origin(_ span: ClosedRange<Int>, _ side: Int) -> Int {
+            min(max((span.lowerBound + span.upperBound + 1 - length) / 2, 0), side - length)
+        }
+        let crop = CGRect(x: origin(x, image.width), y: origin(y, image.height), width: length, height: length)
+        guard let artwork = image.cropping(to: crop) else { return nil }
+        return NSImage(cgImage: artwork, size: NSSize(width: length, height: length))
     }
 }
 
-/// An app icon whose visible artwork fills `size`.
+/// A logo whose visible artwork fills `size`.
 private struct AppIconImage: View {
     let icon: PlatformIcon
     let size: CGFloat
 
     var body: some View {
-        // Trim the margin: draw the icon larger and let its transparent edge spill past the frame.
+        // Trim the margin: draw the image larger and let its margin spill past the frame.
         let full = size / (1 - 2 * icon.margin)
         Image(nsImage: icon.image)
             .resizable()

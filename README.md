@@ -12,12 +12,12 @@ A desktop pet for macOS that keeps an eye on your coding agents. It watches ever
 - **Pet.** The pet reacts to the most urgent thread. It waves on hover and runs while you drag it. Click the pet to show or hide the bubbles. A click anywhere else on the screen hides them again, and the pet keeps a badge with the number of threads that need you.
 - **Mini chat.** Click a bubble for a small chat: the recent messages plus a box to send a command into that same live thread.
 - **Open.** The ↗ on a bubble, or **Open in …** in the chat, jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
-- **Pets.** Six built in: Clawd, Mr. Meeseeks, Ghost, Cat, Robot and Capybara. Pets use the [Codex pet format](#pets), so Codex custom pets work too. Some pets talk ("Ooooh, can do!").
+- **Pets.** Nine built in: Clawd, Mr. Meeseeks, Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus. Pets use the [Codex pet format](#pets), so Codex custom pets work too. Some pets talk ("Ooooh, can do!").
 
 <p align="center">
   <img src="docs/images/chat.png" width="380" alt="The mini chat for one thread">
   &nbsp;
-  <img src="docs/images/pets.png" width="420" alt="The six built-in pets in their idle, waving, needs-input, working and done poses">
+  <img src="docs/images/pets.png" width="560" alt="The nine built-in pets in their idle, waving, needs-input, working and done poses">
 </p>
 
 ## How it talks to Claude Code and Codex
@@ -103,7 +103,7 @@ Mr. Meeseeks is built from a face image by `swift tools/petgen/ballpet.swift`. [
 
 Sidekick isn't affiliated with Anthropic, OpenAI or Adult Swim.
 
-- **Mr. Meeseeks** is a character from *Rick and Morty* (Adult Swim). **Clawd** is Anthropic's Claude Code mascot. Both pets are fan art. The MIT license below covers Sidekick's code and the original pets (Ghost, Cat, Robot and Capybara). It doesn't cover those characters.
+- **Mr. Meeseeks** is a character from *Rick and Morty* (Adult Swim). **Clawd** is Anthropic's Claude Code mascot. Both pets are fan art. The MIT license below covers Sidekick's code and the original pets (Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover those characters.
 - The Claude and Codex logos in the bubbles are read at runtime from the apps installed on your Mac; this repository doesn't include them.
 
 ## License

@@ -1,0 +1,7 @@
+{
+  "id": "hamster",
+  "displayName": "Hamster",
+  "description": "Stuffs its cheeks with your finished tasks.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

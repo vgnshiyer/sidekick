@@ -1,0 +1,7 @@
+{
+  "id": "octopus",
+  "displayName": "Octopus",
+  "description": "Eight arms, eight threads, zero problems.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

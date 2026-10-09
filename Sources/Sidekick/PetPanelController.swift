@@ -49,6 +49,8 @@ final class PetPanelController {
     private var dragging = false
     /// Pet origin minus panel origin, fixed for the length of a drag.
     private var dragOffset = CGVector.zero
+    /// While a scroll over the tray is in progress, the panel keeps the mouse (system uptime).
+    private var scrollHoldUntil: TimeInterval = 0
 
     /// A bubble was clicked: the thread, the bubble's screen frame, and whether the tray grows rightwards.
     var onSelectThread: (AgentThread, CGRect, Bool) -> Void = { _, _, _ in }
@@ -296,6 +298,16 @@ final class PetPanelController {
         }) {
             monitors.append(local)
         }
+        if let scroll = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel, handler: { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, event.window === self.panel else { return }
+                self.scrollHoldUntil = ProcessInfo.processInfo.systemUptime + 0.4
+                if self.panel.ignoresMouseEvents { self.panel.ignoresMouseEvents = false }
+            }
+            return event
+        }) {
+            monitors.append(scroll)
+        }
         // Global monitors only see clicks in other apps and on the desktop, never on Sidekick's own
         // panels, so clicking a bubble or the chat never dismisses anything.
         if let clickAway = NSEvent.addGlobalMonitorForEvents(
@@ -325,7 +337,10 @@ final class PetPanelController {
         pointerOverPet = overPet
         let bubble = overlay.bubble(at: point)
         if overlay.trayModel.hoveredId != bubble { overlay.trayModel.hoveredId = bubble }
-        let interactive = overlay.petContains(point) || bubble != nil
+        // A scroll that started on the tray keeps the whole gesture (momentum included) here,
+        // even when the pointer ends up over a gap or the tray's edge.
+        let scrolling = ProcessInfo.processInfo.systemUptime < scrollHoldUntil
+        let interactive = overlay.petContains(point) || overlay.bubbleContains(point) || scrolling
         if panel.ignoresMouseEvents == interactive {
             panel.ignoresMouseEvents = !interactive
         }

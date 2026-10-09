@@ -1,0 +1,7 @@
+{
+  "id": "duck",
+  "displayName": "Rubber Duck",
+  "description": "Explain your bug to the duck. It's listening.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}
