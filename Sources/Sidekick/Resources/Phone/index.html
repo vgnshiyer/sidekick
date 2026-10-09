@@ -73,11 +73,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .s-ready { background: #34C759; }
 .s-running { background: #0A84FF; animation: blink 1.2s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: 0.2; } }
-.notify {
-  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: -6px 0 14px;
-  padding: 11px 14px; border-radius: 14px; background: var(--card); color: var(--accent); font-size: 15px; font-weight: 600;
-}
-.notify:disabled { color: var(--secondary); font-weight: 500; }
+.hero-text { flex: 1; min-width: 0; }
+/* Notifications on/off, top right of the list. */
+.bell { flex: none; align-self: flex-start; color: var(--secondary); }
+.bell[aria-pressed="true"] { color: var(--accent); }
 .empty { text-align: center; color: var(--secondary); padding: 48px 24px; font-size: 15px; }
 .foot { text-align: center; color: var(--tertiary); font-size: 12px; margin-top: 22px; }
 
@@ -178,22 +177,19 @@ textarea::placeholder { color: var(--c-muted); }
 .who img { width: 18px; height: 18px; object-fit: contain; }
 .send { width: 36px; height: 36px; border-radius: 50%; background: var(--c-send); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; transition: background 0.15s; }
 .send:disabled { background: var(--c-send-off); }
-.toast { position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 56px); background: var(--c-text); color: var(--c-bg); font-size: 13px; padding: 6px 12px; border-radius: 999px; z-index: 4; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 56px); background: var(--label); color: var(--bg); white-space: nowrap; font-size: 13px; padding: 6px 12px; border-radius: 999px; z-index: 4; }
 </style>
 </head>
 <body>
 <div id="list">
   <div class="hero">
     <canvas id="pet" class="pet" width="192" height="208" aria-label="Pet"></canvas>
-    <div>
+    <div class="hero-text">
       <h1 id="headline">Sidekick</h1>
       <div class="conn"><span id="dot" class="dot"></span><span id="conn">Connecting…</span></div>
     </div>
+    <button class="glass bell" id="bell" aria-pressed="false" aria-label="Turn on notifications"></button>
   </div>
-  <button class="notify hidden" id="notify">
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.6 2H4.4zM10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>
-    <span id="notify-text">Turn on notifications</span>
-  </button>
   <div id="threads" class="list"></div>
   <div class="foot" id="foot"></div>
 </div>
@@ -508,7 +504,7 @@ async function deliver(p) {
 let toastTimer = null;
 function toast(text) {
   document.querySelector(".toast")?.remove();
-  $("chat").insertAdjacentHTML("beforeend", `<div class="toast">${esc(text)}</div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="toast">${esc(text)}</div>`);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => document.querySelector(".toast")?.remove(), 1800);
 }
@@ -586,47 +582,61 @@ async function pushSubscription() {
   const reg = await navigator.serviceWorker.ready;
   return reg.pushManager.getSubscription();
 }
-async function showNotifyButton() {
-  const button = $("notify");
-  if (!canPush) {
-    // Safari tab: point the way to the home-screen app.
-    button.classList.toggle("hidden", installed);
-    button.disabled = true;
-    $("notify-text").textContent = "Add to Home Screen to get notifications";
-    return;
-  }
-  const sub = Notification.permission === "granted" ? await pushSubscription() : null;
-  if (sub) {
-    // Already on: make sure the Mac still has it (cheap, and it survives a Mac-side reset).
-    api("api/push/subscribe", sub.toJSON()).catch(() => {});
-    button.classList.add("hidden");
-    return;
-  }
-  button.disabled = Notification.permission === "denied";
-  $("notify-text").textContent = button.disabled ? "Notifications are off in Settings" : "Turn on notifications";
-  button.classList.remove("hidden");
+const BELL = {
+  on: `<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.6 2H4.4zM10 20.5a2.2 2.2 0 0 0 4 0" fill="currentColor" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
+  off: `<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.6 2H4.4zM10 20.5a2.2 2.2 0 0 0 4 0M4 3.5l16 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
+};
+function setBell(on) {
+  const bell = $("bell");
+  bell.setAttribute("aria-pressed", String(on));
+  bell.setAttribute("aria-label", on ? "Turn off notifications" : "Turn on notifications");
+  bell.innerHTML = on ? BELL.on : BELL.off;
+}
+async function showBell() {
+  const sub = canPush && Notification.permission === "granted" ? await pushSubscription() : null;
+  // Already on: make sure the Mac still has it (cheap, and it survives a Mac-side reset).
+  if (sub) api("api/push/subscribe", sub.toJSON()).catch(() => {});
+  setBell(!!sub);
 }
 async function enableNotifications() {
-  try {
-    if (await Notification.requestPermission() !== "granted") return showNotifyButton();
-    const reg = await navigator.serviceWorker.ready;
-    const { key } = await api("api/push/key");
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(key) });
-    await api("api/push/subscribe", sub.toJSON());
-    $("notify").classList.add("hidden");
-  } catch (error) {
-    $("notify-text").textContent = error?.offline ? "Couldn't reach your Mac" : "Couldn't turn on notifications";
+  if (await Notification.requestPermission() !== "granted") {
+    if (Notification.permission === "denied") toast("Notifications are off in Settings");
+    return;
   }
+  const reg = await navigator.serviceWorker.ready;
+  const { key } = await api("api/push/key");
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(key) });
+  await api("api/push/subscribe", sub.toJSON());
+  setBell(true);
 }
-$("notify").addEventListener("click", enableNotifications);
+async function disableNotifications(sub) {
+  await sub.unsubscribe().catch(() => {});
+  api("api/push/unsubscribe", { endpoint: sub.endpoint }).catch(() => {});
+  setBell(false);
+  toast("Notifications off");
+}
+let bellBusy = false;
+$("bell").addEventListener("click", async () => {
+  if (!canPush) return toast(installed ? "Notifications aren't available here" : "Add Sidekick to your Home Screen for notifications");
+  if (Notification.permission === "denied") return toast("Notifications are off in Settings");
+  if (bellBusy) return;
+  bellBusy = true;
+  try {
+    const sub = await pushSubscription();
+    await (sub ? disableNotifications(sub) : enableNotifications());
+  } catch (error) {
+    toast(error?.offline ? "Couldn't reach your Mac" : "Couldn't turn on notifications");
+  } finally {
+    bellBusy = false;
+  }
+});
+setBell(false);
 if (canPush) {
-  navigator.serviceWorker.register("sw.js").then(showNotifyButton).catch(() => {});
+  navigator.serviceWorker.register("sw.js").then(showBell).catch(() => {});
   // A tapped notification while the app is open: go to its thread.
   navigator.serviceWorker.addEventListener("message", e => {
     if (e.data?.open && threads.some(t => t.id === e.data.open)) openChat(e.data.open);
   });
-} else {
-  showNotifyButton();
 }
 
 let poll = null;
