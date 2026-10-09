@@ -218,7 +218,7 @@ public final class PhoneServer: @unchecked Sendable {
         case ("GET", "manifest.webmanifest"):
             let manifest: [String: Any] = [
                 "name": "Sidekick", "short_name": "Sidekick", "start_url": "./", "scope": "./",
-                "display": "standalone", "background_color": "#F2F2F7", "theme_color": "#F2F2F7",
+                "display": "standalone", "background_color": "#3E44B2", "theme_color": "#F2F2F7",
                 "icons": [["src": "icon.png", "sizes": "180x180", "type": "image/png"]],
             ]
             let data = (try? JSONSerialization.data(withJSONObject: manifest)) ?? Data()

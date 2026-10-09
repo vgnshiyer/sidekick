@@ -332,6 +332,26 @@ function tick() {
 /* ---------- Chat ---------- */
 let shownIds = [], pending = [], firstPaint = true;
 
+/* Messages sent from this phone that the transcript doesn't show yet (sending, queued, failed), per
+   thread. A queued message only reaches the transcript when the agent starts on it, so these are kept
+   in localStorage: they survive leaving the chat, closing the app and reloads, until they settle. */
+const PENDING_KEY = "sidekick.pending.v1";
+const pendingStore = (() => { try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || {}; } catch { return {}; } })();
+const inFlight = new Set();
+function savePending() {
+  const cutoff = Date.now() - 12 * 3600 * 1000;
+  for (const id of Object.keys(pendingStore)) {
+    pendingStore[id] = pendingStore[id].filter(p => p.at > cutoff);
+    if (!pendingStore[id].length) delete pendingStore[id];
+  }
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingStore)); } catch {}
+}
+function setPending(list) {
+  pending = list;
+  if (openId) pendingStore[openId] = list;
+  savePending();
+}
+
 function md(text) {
   return String(text).split(/```/).map((part, i) => {
     if (i % 2) return `<pre><code>${esc(part.replace(/^[a-zA-Z0-9_+-]*\n/, ""))}</code></pre>`;
@@ -356,11 +376,11 @@ function bubble(m) {
     : `<div class="turn" data-id="${esc(m.id)}"><div class="them">${md(m.text)}</div>${actions}</div>`;
 }
 function statusHTML(p) {
-  return esc(p.status) + (p.failed ? ` <button class="retry" data-retry="${p.key}">Retry</button>` : "");
+  return esc(p.status) + (p.failed ? ` <button class="retry" data-retry="${esc(p.clientId)}">Retry</button>` : "");
 }
 function pendingHTML(p) {
-  return `<div class="turn me-row pending" data-pending="${p.key}"><div class="me">${esc(p.text)}</div>` +
-    `<div class="status ${p.failed ? "fail" : ""}" data-status="${p.key}">${statusHTML(p)}</div></div>`;
+  return `<div class="turn me-row pending" data-pending="${esc(p.clientId)}"><div class="me">${esc(p.text)}</div>` +
+    `<div class="status ${p.failed ? "fail" : ""}" data-status="${esc(p.clientId)}">${statusHTML(p)}</div></div>`;
 }
 function current() { return threads.find(t => t.id === openId); }
 function nearBottom() { const b = $("msgs"); return b.scrollHeight - b.scrollTop - b.clientHeight < 60; }
@@ -396,9 +416,11 @@ async function loadMessages() {
   if (id !== openId) return;
   const list = $("msg-list"), msgs = data.messages;
   const ids = msgs.map(m => m.id);
-  // A sent message is settled once the transcript shows it.
+  // A sent message is settled once the transcript shows it: the same text, said after it was sent.
   const fresh = msgs.filter(m => !shownIds.includes(m.id));
-  pending = pending.filter(p => !fresh.some(m => m.role === "user" && m.text.trim() === p.text.trim()));
+  const settled = p => msgs.some(m => m.role === "user" && m.text.trim() === p.text.trim() &&
+    (m.date ? Date.parse(m.date) >= p.at - 120000 : !(p.before || []).includes(m.id)));
+  if (pending.some(settled)) setPending(pending.filter(p => !settled(p)));
   const stick = firstPaint || nearBottom();
   const same = ids.length === shownIds.length && ids.every((x, i) => x === shownIds[i]);
   const appendOnly = !firstPaint && shownIds.length > 0 && shownIds.every((x, i) => ids[i] === x);
@@ -420,7 +442,12 @@ async function loadMessages() {
 
 function openChat(id, push = true) {
   listScroll = $("list").scrollTop;
-  openId = id; shownIds = []; pending = []; firstPaint = true;
+  openId = id; shownIds = []; firstPaint = true;
+  // An app closed mid-send never heard back; offer Retry (safe: the Mac delivers each message once).
+  for (const p of pendingStore[id] || []) {
+    if (p.status === "Sending…" && !inFlight.has(p.clientId)) { p.status = "Didn't hear back"; p.failed = true; }
+  }
+  pending = pendingStore[id] || [];
   $("msg-list").innerHTML = `<div class="hint">Loading…</div>`;
   $("list").classList.add("hidden"); $("chat").classList.remove("hidden");
   document.body.classList.add("in-chat");
@@ -437,15 +464,14 @@ function closeChat() {
   $("list").scrollTop = listScroll;
 }
 
-let sendKey = 0;
 function newClientId() {
   return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 async function send() {
   const input = $("input"), text = input.value.trim();
   if (!text || !openId) return;
-  const p = { key: ++sendKey, threadId: openId, text, clientId: newClientId(), status: "Sending…", failed: false };
-  pending.push(p);
+  const p = { threadId: openId, text, clientId: newClientId(), status: "Sending…", failed: false, at: Date.now(), before: shownIds.slice() };
+  setPending([...pending, p]);
   input.value = ""; autosize();
   $("msg-list").querySelector(".hint")?.remove();
   $("msg-list").insertAdjacentHTML("beforeend", pendingHTML(p));
@@ -464,9 +490,11 @@ function shortStatus(data) {
 async function deliver(p) {
   const setStatus = (status, failed) => {
     p.status = status; p.failed = failed;
-    const node = $("msg-list").querySelector(`[data-status="${p.key}"]`);
+    savePending();
+    const node = $("msg-list").querySelector(`[data-status="${CSS.escape(p.clientId)}"]`);
     if (node) { node.innerHTML = statusHTML(p); node.classList.toggle("fail", failed); }
   };
+  inFlight.add(p.clientId);
   setStatus("Sending…", false);
   try {
     const data = await api("api/send", { threadId: p.threadId, text: p.text, clientId: p.clientId });
@@ -474,6 +502,7 @@ async function deliver(p) {
   } catch (error) {
     setStatus(error.offline ? "Couldn't reach your Mac" : error.message, true);
   }
+  inFlight.delete(p.clientId);
   setTimeout(loadMessages, 800);
 }
 let toastTimer = null;
@@ -520,7 +549,7 @@ $("send").addEventListener("click", send);
 $("msg-list").addEventListener("click", async e => {
   const retry = e.target.closest("[data-retry]");
   if (retry) {
-    const p = pending.find(x => String(x.key) === retry.dataset.retry);
+    const p = pending.find(x => x.clientId === retry.dataset.retry);
     if (p) deliver(p);
     return;
   }

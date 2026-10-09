@@ -148,7 +148,8 @@ final class PhoneAccessController: ObservableObject {
         return PhoneAssets(
             html: html,
             serviceWorker: serviceWorker,
-            appIcon: pet.flatMap { Self.appIcon(from: $0.atlas) },
+            appIcon: Bundle.module.url(forResource: "icon", withExtension: "png", subdirectory: "Phone")
+                .flatMap { try? Data(contentsOf: $0) },
             petSheet: pet.flatMap { Self.png($0.atlas) },
             petId: pet?.id ?? "none",
             petName: pet?.displayName ?? "Sidekick",
@@ -174,23 +175,6 @@ final class PhoneAccessController: ObservableObject {
         image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
         NSGraphicsContext.restoreGraphicsState()
         return rep.representation(using: .png, properties: [:])
-    }
-
-    /// The pet's resting frame, pixel-sharp on a soft tile, for the home screen (iOS rounds the corners).
-    private static func appIcon(from atlas: CGImage) -> Data? {
-        let side = 180
-        guard let cell = atlas.cropping(to: CGRect(x: 0, y: 0, width: 192, height: 208)),
-              let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                  data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return nil }
-        context.setFillColor(CGColor(srgbRed: 0.95, green: 0.95, blue: 0.97, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: side, height: side))
-        context.interpolationQuality = .none
-        // 48x52 art at x3 = 144x156, centred.
-        context.draw(cell, in: CGRect(x: (side - 144) / 2, y: (side - 156) / 2, width: 144, height: 156))
-        return context.makeImage().flatMap(png)
     }
 
     // MARK: key

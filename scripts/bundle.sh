@@ -35,6 +35,16 @@ for bundle in "$BIN"/*.bundle; do
 done
 [ -d "$APP/Contents/Resources/Sidekick_Sidekick.bundle" ] || { echo "error: Sidekick_Sidekick.bundle missing in $BIN" >&2; exit 1; }
 
+# App icon, built from the logo at every bundle so the repo only keeps the 1024 px source.
+ICONSET=$(mktemp -d)/AppIcon.iconset
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z $size $size "$ROOT/assets/logo/sidekick-mac-1024.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    sips -z $((size * 2)) $((size * 2)) "$ROOT/assets/logo/sidekick-mac-1024.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+rm -rf "$(dirname "$ICONSET")"
+
 # The bridge installers, laid out as in the repo, so people who only have the app can turn on sending:
 #   /Applications/Sidekick.app/Contents/Resources/Bridge/scripts/install-claude-bridge.sh
 BRIDGE="$APP/Contents/Resources/Bridge"

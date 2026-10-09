@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo/sidekick-mac-1024.png" width="128" alt="Sidekick logo"></p>
+
 # Sidekick
 
 A desktop pet for macOS that keeps an eye on your coding agents. It watches every **Claude Code** and **Codex** thread on your Mac, wherever it runs: the terminal, the Claude desktop app, the Codex desktop app or VS Code. Each thread shows up as a speech bubble above the pet. Click a bubble to reply, or jump straight to the thread.
