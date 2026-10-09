@@ -104,8 +104,7 @@ struct TrayView: View {
     }
 }
 
-/// One thread: badge, title, status chip and a subtitle line. On hover, an Open button sits at
-/// the end of the subtitle line.
+/// One thread: badge, title, status dot and a subtitle line.
 private struct BubbleRow: View {
     let thread: AgentThread
     let tail: BubbleShape.Tail
@@ -130,11 +129,8 @@ private struct BubbleRow: View {
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    // Ends short of the Open button while it shows.
-                    .padding(.trailing, hovering ? OpenButton.size + 6 : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 26)
-                    .anchorPreference(key: SubtitleBoundsKey.self, value: .bounds) { $0 }
             }
             .scrollFade()
             .padding(.horizontal, 11)
@@ -148,58 +144,6 @@ private struct BubbleRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the chat")
         .accessibilityAction(named: "Open in \(thread.openTargetName)", open)
-        // A sibling of the row's button, not inside its label, where it would never get the click.
-        .overlayPreferenceValue(SubtitleBoundsKey.self) { anchor in
-            GeometryReader { geometry in
-                if let anchor {
-                    let line = geometry[anchor]
-                    OpenButton(target: thread.openTargetName, action: open)
-                        .scrollFade()
-                        // A point low centers it on the text's ink and leaves a gap under the chip.
-                        .position(x: line.maxX - OpenButton.size / 2, y: line.midY + 1)
-                        .opacity(hovering ? 1 : 0)
-                        .animation(.easeOut(duration: 0.12), value: hovering)
-                        .allowsHitTesting(hovering)
-                        .accessibilityHidden(true)
-                }
-            }
-        }
-    }
-}
-
-/// Small round button that opens the thread in its own app.
-private struct OpenButton: View {
-    /// Sits on the subtitle line, clear of the status dot above it.
-    static let size: CGFloat = 20
-
-    let target: String
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "arrow.up.forward")
-                .font(.system(size: 10, weight: .bold))
-                .frame(width: Self.size, height: Self.size)
-                .contentShape(Circle())
-        }
-        .buttonStyle(RoundButtonStyle(hovering: hovering))
-        .onHover { hovering = $0 }
-        .help("Open in \(target)")
-    }
-}
-
-/// A solid accent circle with a white arrow. Glass recolours its own text for whatever is behind it,
-/// but not custom fills, so the button carries its own contrast to stay visible on any backdrop.
-private struct RoundButtonStyle: ButtonStyle {
-    let hovering: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(.white)
-            .background(Circle().fill(Color.accentColor))
-            .brightness(configuration.isPressed ? -0.12 : hovering ? 0.08 : 0)
-            .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
     }
 }
 
@@ -210,13 +154,6 @@ private extension View {
         scrollTransition(.interactive, axis: .vertical) { content, phase in
             content.opacity(1 - 0.9 * min(abs(phase.value), 1))
         }
-    }
-}
-
-private struct SubtitleBoundsKey: PreferenceKey {
-    static let defaultValue: Anchor<CGRect>? = nil
-    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
-        value = value ?? nextValue()
     }
 }
 

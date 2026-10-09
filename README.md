@@ -12,7 +12,7 @@ A desktop pet for macOS that keeps an eye on your coding agents. It watches ever
 - **Pet.** The pet reacts to the most urgent thread. It waves on hover and runs while you drag it. Click the pet to show or hide the bubbles. A click anywhere else on the screen hides them again, and the pet keeps a badge with the number of threads that need you.
 - **Mini chat.** Click a bubble for a small chat: the recent messages plus a box to send a command into that same live thread.
 - **Phone.** The same list and chat on your iPhone, with notifications, through Tailscale. See [Use it from your phone](#use-it-from-your-phone).
-- **Open.** The ↗ on a bubble, or **Open in …** in the chat, jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
+- **Open.** **Open in …** in the chat jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
 - **Pets.** Nine built in: Clawd, Mr. Meeseeks, Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus. Pets use the [Codex pet format](#pets), so Codex custom pets work too. Some pets talk ("Ooooh, can do!").
 
 <p align="center">
