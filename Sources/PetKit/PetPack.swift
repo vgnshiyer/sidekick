@@ -106,6 +106,17 @@ public struct PetPack: Identifiable, Sendable {
             quips: manifest.quips?.nilIfEmpty)
     }
 
+    /// A pack whose atlas comes from elsewhere than a pack folder (another app's resources), or nil
+    /// if `sheet` isn't a Codex-format atlas. `origin` stands in for the folder.
+    public static func make(id: String, displayName: String, description: String, sheet: Data, origin: URL) -> PetPack? {
+        guard let source = CGImageSourceCreateWithData(sheet as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let rows = PetAtlas.rowCount(width: image.width, height: image.height) else { return nil }
+        return PetPack(
+            id: id, displayName: displayName, description: description, directory: origin,
+            spriteVersion: rows == 11 ? 2 : 1, atlas: image, quips: nil)
+    }
+
     /// `pet.json` per the Codex pets contract. Every field is optional.
     struct Manifest: Decodable {
         var id: String?

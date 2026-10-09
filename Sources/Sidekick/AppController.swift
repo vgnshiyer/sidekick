@@ -1,6 +1,7 @@
 import AppKit
 import BridgeKit
 import Combine
+import CodexKit
 import PetKit
 import SidekickCore
 
@@ -28,7 +29,7 @@ final class AppController {
         self.store = store
         self.bridge = bridge
         self.hub = hub
-        pets = PetLibrary.loadAll(from: Self.petRoots)
+        pets = Self.loadPets()
         stateStore = UIStateStore(file: Paths.stateFile, persist: persistUI)
         let pack = Self.pet(in: pets, preferred: stateStore.state.petId)
         petPanel = PetPanelController(sprite: Self.sprite(for: pack), quips: pack?.quips, stateStore: stateStore)
@@ -47,9 +48,30 @@ final class AppController {
         ].compactMap { $0 }
     }
 
-    /// The saved choice if it still exists, else "clawd", else the first pack.
+    /// Listed first, in this order; the rest follow by root, then name.
+    static let leadingPets = ["pal", "clawd", "codex"]
+
+    /// The pets in `petRoots`, plus the Codex mascot read from the Codex app when it's installed.
+    static func loadPets() -> [PetPack] {
+        var pets = PetLibrary.loadAll(from: petRoots)
+        if let codex = codexMascot(), !pets.contains(where: { $0.id == codex.id }) {
+            pets.append(codex)
+        }
+        let leading = leadingPets.compactMap { id in pets.first { $0.id == id } }
+        return leading + pets.filter { !leadingPets.contains($0.id) }
+    }
+
+    private static func codexMascot() -> PetPack? {
+        let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.codex")
+            ?? URL(fileURLWithPath: "/Applications/ChatGPT.app")
+        guard let sheet = CodexMascot.spritesheet(inApp: app) else { return nil }
+        return PetPack.make(
+            id: "codex", displayName: "Codex", description: "Codex's own mascot, from the Codex app.", sheet: sheet, origin: app)
+    }
+
+    /// The saved choice if it still exists, else Pal, else the first pack.
     static func pet(in pets: [PetPack], preferred id: String?) -> PetPack? {
-        pets.first { $0.id == id } ?? pets.first { $0.id == "clawd" } ?? pets.first
+        pets.first { $0.id == id } ?? pets.first { $0.id == "pal" } ?? pets.first
     }
 
     static func sprite(for pack: PetPack?) -> PetSprite {

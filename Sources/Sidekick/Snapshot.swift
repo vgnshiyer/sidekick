@@ -18,7 +18,7 @@ enum Snapshot {
             let messages = await store.messages(for: chatThread, limit: ChatModel.messageLimit)
 
             let roots = AppController.petRoots
-            let pets = PetLibrary.loadAll(from: roots)
+            let pets = AppController.loadPets()
             let sprite = AppController.sprite(for: AppController.pet(in: pets, preferred: nil))
             let talker = pets.first { $0.quips?.working != nil }
             print("pet roots: \(roots.map(\.path).joined(separator: ", "))")

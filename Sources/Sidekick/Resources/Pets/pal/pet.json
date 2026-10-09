@@ -1,0 +1,7 @@
+{
+  "id": "pal",
+  "displayName": "Pal",
+  "description": "Sidekick's own Pal, floating by, its speech bubble showing what's up.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}
