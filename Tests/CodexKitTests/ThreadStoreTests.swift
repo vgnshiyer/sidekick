@@ -98,4 +98,31 @@ final class ThreadStoreTests: XCTestCase {
         _ = await store.apiMessages(threadId: "codex:t1", limit: 5)
         XCTAssertEqual(store.threads.map(\.status), [.idle], "the phone opened the chat")
     }
+
+    func testHiddenThreadComesBackWithNewActivity() async {
+        let provider = FakeProvider()
+        provider.threads = [thread(.ready, endedAgo: 60)]
+        let store = ThreadStore(providers: [provider], persist: false)
+        await store.refresh()
+        XCTAssertEqual(store.attentionCount, 1)
+
+        store.hide(store.threads[0])
+        XCTAssertTrue(store.threads.isEmpty)
+        await store.refresh()
+        XCTAssertTrue(store.threads.isEmpty, "nothing new: stays hidden, off the count")
+        XCTAssertEqual(store.attentionCount, 0)
+
+        provider.threads = [thread(.running, endedAgo: 60)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.running], "you chatted in it again")
+
+        provider.threads = [thread(.idle, endedAgo: 60)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.count, 1, "and it stays back once the turn is over")
+
+        store.hide(store.threads[0])
+        provider.threads = [thread(.idle, endedAgo: -1)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.ready], "a reply that lands after hiding brings it back")
+    }
 }

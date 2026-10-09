@@ -54,6 +54,8 @@ final class TrayModel: ObservableObject {
     var onSelect: (AgentThread) -> Void = { _ in }
     /// A bubble's Open button: jump to the thread in its own app, without the chat.
     var onOpen: (AgentThread) -> Void = { _ in }
+    /// Hide the thread until it shows new activity.
+    var onHide: (AgentThread) -> Void = { _ in }
 }
 
 struct TrayView: View {
@@ -71,7 +73,8 @@ struct TrayView: View {
                         thread: thread, tail: tail(at: index, of: ordered.count),
                         hovering: model.hoveredId == thread.id,
                         select: { model.onSelect(thread) },
-                        open: { model.onOpen(thread) })
+                        open: { model.onOpen(thread) },
+                        hide: { model.onHide(thread) })
                     .background(GeometryReader { geometry in
                         Color.clear.preference(
                             key: BubbleFramesKey.self, value: [thread.id: geometry.frame(in: .named(Self.space))])
@@ -111,6 +114,7 @@ private struct BubbleRow: View {
     let hovering: Bool
     let select: () -> Void
     let open: () -> Void
+    let hide: () -> Void
 
     var body: some View {
         let shape = BubbleShape(cornerRadius: 14, tail: tail)
@@ -141,9 +145,14 @@ private struct BubbleRow: View {
             .surface(in: shape, interactive: true, highlighted: hovering)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Open in \(thread.openTargetName)", action: open)
+            Button("Hide", action: hide)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the chat")
         .accessibilityAction(named: "Open in \(thread.openTargetName)", open)
+        .accessibilityAction(named: "Hide", hide)
     }
 }
 

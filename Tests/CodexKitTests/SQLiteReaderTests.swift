@@ -18,11 +18,16 @@ final class SQLiteReaderTests: XCTestCase {
         }
 
         // While the writer has it open, the reader sees rows through the WAL.
-        let live = try XCTUnwrap(SQLiteReader(path: path))
-        XCTAssertEqual(live.rows("SELECT x FROM t ORDER BY x") { $0.string(0) }, ["a", "b"])
+        do {
+            let live = try XCTUnwrap(SQLiteReader(path: path))
+            XCTAssertEqual(live.rows("SELECT x FROM t ORDER BY x") { $0.string(0) }, ["a", "b"])
+        }  // closed here, so the writer's close below is the last one and removes the WAL
 
+        // Codex's own SQLite deletes the -wal and -shm files when it closes the database; macOS's keeps
+        // an empty WAL, so checkpoint everything into the main file and remove them the same way.
+        XCTAssertEqual(sqlite3_exec(writer, "PRAGMA wal_checkpoint(TRUNCATE)", nil, nil, nil), SQLITE_OK)
         sqlite3_close(writer)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: path + "-wal"), "a clean close removes the WAL")
+        for suffix in ["-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) }
         let closed = try XCTUnwrap(SQLiteReader(path: path))
         XCTAssertEqual(closed.rows("SELECT x FROM t ORDER BY x") { $0.string(0) }, ["a", "b"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: path + "-shm"), "reading leaves no files behind")

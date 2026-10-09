@@ -9,6 +9,8 @@ public final class ThreadStore: ObservableObject {
 
     public let providers: [ThreadProvider]
     private var acks: [String: Date] = [:]
+    /// Threads the user hid, and when. Each stays hidden until it shows new activity.
+    private var hidden: [String: Date] = [:]
     /// When each thread was first and last returned by a provider.
     private var sightings: [String: (first: Date, last: Date)] = [:]
     private var timer: Timer?
@@ -65,7 +67,15 @@ public final class ThreadStore: ObservableObject {
         let now = Date()
         var result: [AgentThread] = []
         var acked = false
+        var unhid = false
         for var t in all {
+            if let at = hidden[t.id] {
+                // Back once you chat in it again, it needs you, or a new reply lands.
+                let active = t.status == .running || t.status == .needsInput || (t.lastTurnEndedAt ?? .distantPast) > at
+                guard active else { continue }
+                hidden[t.id] = nil
+                unhid = true
+            }
             if t.id == onScreen, let end = t.lastTurnEndedAt, (acks[t.id] ?? .distantPast) < end {
                 acks[t.id] = end
                 acked = true
@@ -87,7 +97,7 @@ public final class ThreadStore: ObservableObject {
             }
             result.append(t)
         }
-        if acked { saveAcks() }
+        if acked || unhid { saveAcks() }
         sightings = sightings.filter { now.timeIntervalSince($0.value.last) < 24 * 3600 }
         result.sort {
             if $0.status.rank != $1.status.rank { return $0.status.rank < $1.status.rank }
@@ -112,6 +122,13 @@ public final class ThreadStore: ObservableObject {
                 return $0.id < $1.id
             }
         }
+        saveAcks()
+    }
+
+    /// Take a thread off the list (and the count) until it shows new activity.
+    public func hide(_ thread: AgentThread) {
+        hidden[thread.id] = Date()
+        threads.removeAll { $0.id == thread.id }
         saveAcks()
     }
 
@@ -143,19 +160,24 @@ public final class ThreadStore: ObservableObject {
 
     // MARK: persistence
 
-    private struct AckFile: Codable { var acks: [String: Date] }
+    private struct AckFile: Codable {
+        var acks: [String: Date]
+        var hidden: [String: Date]?
+    }
 
     private func loadAcks() {
         guard let data = try? Data(contentsOf: Paths.stateFile.deletingLastPathComponent().appendingPathComponent("acks.json")),
               let file = try? JSONDecoder().decode(AckFile.self, from: data) else { return }
         acks = file.acks
+        hidden = file.hidden ?? [:]
     }
 
     private func saveAcks() {
         guard persist else { return }
         let cutoff = Date().addingTimeInterval(-14 * 24 * 3600)
         acks = acks.filter { $0.value > cutoff }
-        if let data = try? JSONEncoder().encode(AckFile(acks: acks)) {
+        hidden = hidden.filter { $0.value > cutoff }
+        if let data = try? JSONEncoder().encode(AckFile(acks: acks, hidden: hidden)) {
             try? data.write(
                 to: Paths.stateFile.deletingLastPathComponent().appendingPathComponent("acks.json"),
                 options: .atomic)

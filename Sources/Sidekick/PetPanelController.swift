@@ -56,6 +56,8 @@ final class PetPanelController {
     var onSelectThread: (AgentThread, CGRect, Bool) -> Void = { _, _, _ in }
     /// A bubble's Open button was clicked: show the thread in its own app.
     var onOpenThread: (AgentThread) -> Void = { _ in }
+    /// Hide, from a bubble's right-click menu.
+    var onHideThread: (AgentThread) -> Void = { _ in }
     /// The pet was clicked or started moving; the chat should get out of the way.
     var onPetInteraction: () -> Void = {}
     /// False while the displays sleep or the user's session is switched out.
@@ -71,6 +73,7 @@ final class PetPanelController {
 
         overlay.trayModel.onSelect = { [weak self] thread in self?.select(thread) }
         overlay.trayModel.onOpen = { [weak self] thread in self?.onOpenThread(thread) }
+        overlay.trayModel.onHide = { [weak self] thread in self?.onHideThread(thread) }
         // Hover follows the bubbles, not only the mouse. Hover changes no frames, so this doesn't loop.
         overlay.trayModel.onFramesChanged = { [weak self] in self?.updatePointer(NSEvent.mouseLocation) }
         let spriteView = overlay.spriteView

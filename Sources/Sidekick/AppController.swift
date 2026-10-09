@@ -91,6 +91,11 @@ final class AppController {
             let store = store
             Task { await store.open(thread) }
         }
+        petPanel.onHideThread = { [weak self] thread in
+            guard let self else { return }
+            if chat.openThreadId == thread.id { chat.close() }
+            store.hide(thread)
+        }
         petPanel.onPetInteraction = { [weak self] in self?.chat.close() }
         chat.onSent = { [weak self] in self?.petPanel.say(.sent) }
         chat.onOpened = { [weak self] in self?.petPanel.collapseTray() }
