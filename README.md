@@ -41,7 +41,11 @@ Everything stays on your Mac. Sidekick, the plugin and the hook talk over a Unix
 - Claude Code 2.1.287 or later, for plugin "mods". Sending from the pet needs this; seeing threads doesn't.
 - Codex CLI 0.159 or later, or the Codex desktop app.
 
-## Build and run
+## Install
+
+Download `Sidekick-<version>.dmg` from [Releases](https://github.com/vgnshiyer/sidekick/releases/latest), open it and drag **Sidekick** into **Applications**. The app is signed and notarized by Apple, so it opens without warnings. The pet appears in the bottom-left corner. Use the paw icon in the menu bar to switch pets, change the size, hide the pet or quit.
+
+## Build from source
 
 ```sh
 git clone https://github.com/vgnshiyer/sidekick.git
@@ -50,16 +54,18 @@ scripts/bundle.sh          # release build -> build/Sidekick.app (ad-hoc signed 
 open build/Sidekick.app
 ```
 
-The pet appears in the bottom-left corner. Use the paw icon in the menu bar to switch pets, change the size, hide the pet or quit.
+`scripts/release.sh <version>` builds the notarized DMG for a release. It needs a Developer ID certificate and a `notarytool` keychain profile; the script's header says how to make one.
 
 ## Turn on sending and "Needs input"
 
-Two optional, one-time installs. Both scripts can be run again safely and both take `--uninstall`.
+Two optional, one-time installs. Both scripts can be run again safely and both take `--uninstall`. The app carries them, so you don't need the source:
 
 ```sh
-scripts/install-claude-bridge.sh   # installs the sidekick-bridge plugin for your user
-scripts/install-codex-hooks.sh     # merges Sidekick's hooks into ~/.codex/hooks.json (backs it up first)
+/Applications/Sidekick.app/Contents/Resources/Bridge/scripts/install-claude-bridge.sh   # the sidekick-bridge plugin, for your user
+/Applications/Sidekick.app/Contents/Resources/Bridge/scripts/install-codex-hooks.sh     # merges Sidekick's hooks into ~/.codex/hooks.json (backs it up first)
 ```
+
+From a source checkout, run the same scripts from `scripts/`.
 
 - **Claude:** new sessions load the plugin automatically. In sessions that are already open, run `/reload-plugins`. A prompt sent from Sidekick shows up under a dim "Prompt from the sidekick-bridge plugin" line. Slash commands can't be sent by plugins, so Sidekick copies them to the clipboard and opens the session instead.
 - **Codex:** trust the new hooks once, in the Codex app (**Settings > Hooks**) or with `/hooks` in the CLI. Sidekick leaves your `config.toml` and `notify` setting alone.
