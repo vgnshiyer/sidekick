@@ -17,8 +17,7 @@ import petgen as P  # noqa: E402
 
 sys.modules.setdefault("petgen", P)
 
-# Mr. Meeseeks is built by ballpet.swift, not petgen, so it has no pet module here.
-PETS = ["clawd", "ghost", "cat", "robot", "capybara", "duck", "hamster", "octopus"]
+PETS = ["clawd", "cat", "capybara", "duck", "hamster", "octopus"]
 BGS = {"light": "#F4F4F6", "dark": P.DARK_BG}
 GAP = 4
 

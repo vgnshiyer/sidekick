@@ -395,7 +395,7 @@ def draw_desk(c, p):
     c.paste(lap, lx0, ly0)
     for f in fronts:
         c.paste(f)
-    if p["typing"][2]:   # key-tap flick beside the lid's right corner (the cat and robot's spot)
+    if p["typing"][2]:   # key-tap flick beside the lid's right corner (the cat's spot)
         c.set(lx0 + lap.w, ly0 + 1, TAP).set(lx0 + lap.w + 1, ly0, TAP)
 
 

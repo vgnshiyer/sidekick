@@ -2,7 +2,7 @@ import AppKit
 import CodexKit
 import SidekickCore
 
-/// The pawprint menu: pet choice, visibility, size, bridge status and Quit.
+/// The menu bar's logo menu: pet choice, visibility, size, bridge status and Quit.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -16,14 +16,53 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(app: AppController) {
         self.app = app
         super.init()
-        let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Sidekick")
-        image?.isTemplate = true
-        statusItem.button?.image = image
+        statusItem.button?.image = Self.logoTemplate()
         menu.delegate = self
         menu.autoenablesItems = false
         statusItem.menu = menu
         claudeStatus.isEnabled = false
         codexStatus.isEnabled = false
+    }
+
+    /// The logo's pal and status bubble in one color, with the eyes and the three dots cut out.
+    /// Drawn in the logo's 1024-unit coordinates (body cropped above the tile's edge), fitted to 18 pt.
+    static func logoTemplate() -> NSImage {
+        let content = CGRect(x: 290, y: 206, width: 540, height: 634)
+        let height: CGFloat = 18
+        let scale = height / content.height
+        let image = NSImage(size: CGSize(width: (content.width * scale).rounded(.up), height: height), flipped: true) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.scaleBy(x: scale, y: scale)
+            context.translateBy(x: -content.minX, y: -content.minY)
+
+            let shape = CGMutablePath()
+            shape.move(to: CGPoint(x: 300, y: 840))
+            shape.addLine(to: CGPoint(x: 300, y: 640))
+            shape.addQuadCurve(to: CGPoint(x: 470, y: 470), control: CGPoint(x: 300, y: 470))
+            shape.addLine(to: CGPoint(x: 554, y: 470))
+            shape.addQuadCurve(to: CGPoint(x: 724, y: 640), control: CGPoint(x: 724, y: 470))
+            shape.addLine(to: CGPoint(x: 724, y: 840))
+            shape.closeSubpath()
+            shape.addRoundedRect(in: CGRect(x: 520, y: 216, width: 300, height: 180), cornerWidth: 90, cornerHeight: 90)
+            shape.addLines(between: [CGPoint(x: 560, y: 380), CGPoint(x: 530, y: 446), CGPoint(x: 612, y: 390)])
+            shape.closeSubpath()
+            context.setFillColor(.black)
+            context.addPath(shape)
+            context.fillPath()
+
+            // Larger than the logo's so they stay open at 18 pt.
+            context.setBlendMode(.clear)
+            for x in [438.0, 586.0] {
+                context.fillEllipse(in: CGRect(x: x - 40, y: 640 - 54, width: 80, height: 108))
+            }
+            for x in [585.0, 670.0, 755.0] {
+                context.fillEllipse(in: CGRect(x: x - 31, y: 306 - 31, width: 62, height: 62))
+            }
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Sidekick"
+        return image
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

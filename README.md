@@ -15,12 +15,12 @@ A desktop pet for macOS that keeps an eye on your coding agents. It watches ever
 - **Mini chat.** Click a bubble for a small chat: the recent messages plus a box to send a command into that same live thread.
 - **Phone.** The same list and chat on your iPhone, with notifications, through Tailscale. See [Use it from your phone](#use-it-from-your-phone).
 - **Open.** **Open in …** in the chat jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
-- **Pets.** Nine built in: Clawd, Mr. Meeseeks, Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus. Pets use the [Codex pet format](#pets), so Codex custom pets work too. Some pets talk ("Ooooh, can do!").
+- **Pets.** Six built in: Clawd, Cat, Capybara, Rubber Duck, Hamster and Octopus. Pets use the [Codex pet format](#pets), so Codex custom pets work too, and a custom pet can talk with a [quip bubble](#pets).
 
 <p align="center">
   <img src="docs/images/chat.png" width="380" alt="The mini chat for one thread">
   &nbsp;
-  <img src="docs/images/pets.png" width="560" alt="The nine built-in pets in their idle, waving, needs-input, working and done poses">
+  <img src="docs/images/pets.png" width="560" alt="The six built-in pets in their idle, waving, needs-input, working and done poses">
 </p>
 
 ## How it talks to Claude Code and Codex
@@ -46,7 +46,7 @@ Everything stays on your Mac. Sidekick, the plugin and the hook talk over a Unix
 
 ## Install
 
-Download `Sidekick-<version>.dmg` from [Releases](https://github.com/vgnshiyer/sidekick/releases/latest), open it and drag **Sidekick** into **Applications**. The app is signed and notarized by Apple, so it opens without warnings. The pet appears in the bottom-left corner. Use the paw icon in the menu bar to switch pets, change the size, hide the pet or quit.
+Download `Sidekick-<version>.dmg` from [Releases](https://github.com/vgnshiyer/sidekick/releases/latest), open it and drag **Sidekick** into **Applications**. The app is signed and notarized by Apple, so it opens without warnings. The pet appears in the bottom-left corner. Use the Sidekick icon in the menu bar to switch pets, change the size, hide the pet or quit.
 
 ## Build from source
 
@@ -110,7 +110,7 @@ The built-in pixel pets are drawn in code with `tools/petgen` (Python standard l
 python3 tools/petgen/petgen.py build cat      # writes the pack plus previews in tools/petgen/out/cat/
 ```
 
-Mr. Meeseeks is built from a face image by `swift tools/petgen/ballpet.swift`. [tools/petgen/STYLE.md](tools/petgen/STYLE.md) is the style guide.
+[tools/petgen/STYLE.md](tools/petgen/STYLE.md) is the style guide.
 
 ## Limitations
 
@@ -121,9 +121,9 @@ Mr. Meeseeks is built from a face image by `swift tools/petgen/ballpet.swift`. [
 
 ## Credits and trademarks
 
-Sidekick isn't affiliated with Anthropic, OpenAI or Adult Swim.
+Sidekick isn't affiliated with Anthropic or OpenAI.
 
-- **Mr. Meeseeks** is a character from *Rick and Morty* (Adult Swim). **Clawd** is Anthropic's Claude Code mascot. Both pets are fan art. The MIT license below covers Sidekick's code and the original pets (Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover those characters.
+- **Clawd** is Anthropic's Claude Code mascot; the pet is fan art. The MIT license below covers Sidekick's code and the original pets (Cat, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover Clawd.
 - The Claude and Codex logos in the bubbles are read at runtime from the apps installed on your Mac; this repository doesn't include them.
 
 ## License

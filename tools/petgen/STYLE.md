@@ -21,10 +21,6 @@ python3 tools/petgen/petgen.py zoom <id> <row> [frame]   # x10 pixel-grid inspec
 python3 tools/petgen/petgen.py build all           # every pets/*.py not starting with _
 ```
 
-Mr. Meeseeks is the exception: he is the user's face image (`assets/meeseeks-face.png`) on a ball,
-built by `swift tools/petgen/ballpet.swift --out <dir>`. The shipped pack is the `pixel` variant:
-copy `<dir>/pixel/{pet.json,spritesheet.png}` into `Sources/Sidekick/Resources/Pets/meeseeks/`.
-
 1. Create `tools/petgen/pets/<id>.py`, using a lowercase id such as `fox` or `moth`. It exposes
    `PET = {"id", "displayName", "description"}` and `frames() -> {row: [Canvas, ...]}`.
    The `id` must match the file name. `PET` may also carry `"quips": {"sent": "...", "working": "..."}`,
