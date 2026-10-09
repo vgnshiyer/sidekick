@@ -123,8 +123,8 @@ python3 tools/petgen/petgen.py build cat      # writes the pack plus previews in
 
 Sidekick isn't affiliated with Anthropic or OpenAI.
 
-- **Clawd** is Anthropic's Claude Code mascot; the pet is fan art. The MIT license below covers Sidekick's code and the original pets (Pal, Cat, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover Clawd.
-- The Claude and Codex logos in the bubbles, and the Codex mascot pet, are read at runtime from the apps installed on your Mac; this repository doesn't include them.
+- **Clawd** is Anthropic's Claude Code mascot; the pet is fan art. The **Codex** pet is OpenAI's Codex mascot, loaded from the installed Codex app; the pets image above shows it. The MIT license below covers Sidekick's code and the original pets (Pal, Cat, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover Clawd or the Codex mascot.
+- The Claude and Codex logos in the bubbles, and the Codex pet's spritesheet, are read at runtime from the apps installed on your Mac; this repository doesn't include those files.
 
 ## License
 
