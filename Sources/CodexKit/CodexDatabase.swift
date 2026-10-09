@@ -1,8 +1,10 @@
 import Foundation
 import SQLite3
 
-/// A read-only connection to one of Codex's live WAL databases. Never writes and never
-/// uses `immutable`, so writes still sitting in the WAL are visible.
+/// A read-only connection to one of Codex's WAL databases. Never writes. While Codex has the
+/// database open, reads go through its WAL so recent writes are visible; once Codex closes it
+/// (no `-wal` file left), a read-only open can't make the `-shm` index, so it reads the main file
+/// as `immutable`, which then holds everything.
 final class SQLiteReader {
     enum Value {
         case int(Int64)
@@ -26,7 +28,9 @@ final class SQLiteReader {
     /// Opens `path` with `SQLITE_OPEN_READONLY` and a 250 ms busy timeout. Nil if it can't be opened.
     init?(path: String) {
         var handle: OpaquePointer?
-        guard sqlite3_open_v2(path, &handle, SQLITE_OPEN_READONLY, nil) == SQLITE_OK, let handle else {
+        let closed = !FileManager.default.fileExists(atPath: path + "-wal")
+        let name = closed ? URL(fileURLWithPath: path).absoluteString + "?immutable=1" : path
+        guard sqlite3_open_v2(name, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK, let handle else {
             sqlite3_close(handle)
             return nil
         }
@@ -81,8 +85,7 @@ struct CodexThreadRow: Equatable, Sendable {
 /// read as NULL, and a missing table reads as empty.
 enum CodexDatabase {
     /// Non-archived interactive threads updated since `cutoff` or listed in `ids`, newest first.
-    /// Nil when the database can't be opened, e.g. a read-only open while no Codex process has
-    /// the WAL open.
+    /// Nil when the database can't be opened, e.g. it doesn't exist yet.
     static func threads(path: String, updatedSince cutoff: Date, orIn ids: Set<String>, limit: Int) -> [CodexThreadRow]? {
         guard let db = SQLiteReader(path: path) else { return nil }
         let columns = db.columns(of: "threads")
