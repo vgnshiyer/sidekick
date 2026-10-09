@@ -14,6 +14,8 @@ final class AppController {
     private let stateStore: UIStateStore
     private let petPanel: PetPanelController
     private let chat: ChatPanelController
+    let phone: PhoneAccessController
+    private let notifier: PushNotifier
     private var menuBar: MenuBarController?
     private var subscription: AnyCancellable?
     private var terminationObserver: NSObjectProtocol?
@@ -31,6 +33,9 @@ final class AppController {
         let pack = Self.pet(in: pets, preferred: stateStore.state.petId)
         petPanel = PetPanelController(sprite: Self.sprite(for: pack), quips: pack?.quips, stateStore: stateStore)
         chat = ChatPanelController(store: store)
+        let push = PushCenter(directory: Paths.appSupport)
+        phone = PhoneAccessController(api: store, push: push)
+        notifier = PushNotifier(push: push)
     }
 
     /// Bundled pets, then the user's Sidekick pets, then their Codex pets (read-only).
@@ -76,6 +81,9 @@ final class AppController {
             MainActor.assumeIsolated { self?.bridge?.stop() }
         }
         observeAway()
+        phone.setPet(selectedPet)
+        phone.onToggle = { [weak self] on in self?.stateStore.update { $0.phoneAccess = on } }
+        if stateStore.state.phoneAccess { phone.setOn(true) }
         if !stateStore.state.petHidden { petPanel.show() }
         store.start()
     }
@@ -104,6 +112,7 @@ final class AppController {
     }
 
     private func threadsChanged(_ threads: [AgentThread]) {
+        notifier.update(threads, sending: phone.isOn)
         petPanel.update(threads: threads, mood: PetMood(threads.first?.status))
         chat.threadsChanged(threads)
     }
@@ -118,6 +127,7 @@ final class AppController {
         guard let pack = pets.first(where: { $0.id == id }) else { return }
         stateStore.update { $0.petId = id }
         petPanel.setSprite(Self.sprite(for: pack), quips: pack.quips)
+        phone.setPet(pack)
     }
 
     func setPetVisible(_ visible: Bool) {

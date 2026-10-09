@@ -11,6 +11,7 @@ A desktop pet for macOS that keeps an eye on your coding agents. It watches ever
 - **Bubbles.** One bubble per active thread, sorted by what needs you: **Needs input**, **Failed**, **Ready**, **Running**, **Idle**. Each bubble shows the title, a status chip, the latest line from the agent and the tool's own icon.
 - **Pet.** The pet reacts to the most urgent thread. It waves on hover and runs while you drag it. Click the pet to show or hide the bubbles. A click anywhere else on the screen hides them again, and the pet keeps a badge with the number of threads that need you.
 - **Mini chat.** Click a bubble for a small chat: the recent messages plus a box to send a command into that same live thread.
+- **Phone.** The same list and chat on your iPhone, with notifications, through Tailscale. See [Use it from your phone](#use-it-from-your-phone).
 - **Open.** The ↗ on a bubble, or **Open in …** in the chat, jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
 - **Pets.** Nine built in: Clawd, Mr. Meeseeks, Ghost, Cat, Robot, Capybara, Rubber Duck, Hamster and Octopus. Pets use the [Codex pet format](#pets), so Codex custom pets work too. Some pets talk ("Ooooh, can do!").
 
@@ -69,6 +70,17 @@ From a source checkout, run the same scripts from `scripts/`.
 
 - **Claude:** new sessions load the plugin automatically. In sessions that are already open, run `/reload-plugins`. A prompt sent from Sidekick shows up under a dim "Prompt from the sidekick-bridge plugin" line. Slash commands can't be sent by plugins, so Sidekick copies them to the clipboard and opens the session instead.
 - **Codex:** trust the new hooks once, in the Codex app (**Settings > Hooks**) or with `/hooks` in the CLI. Sidekick leaves your `config.toml` and `notify` setting alone.
+
+## Use it from your phone
+
+Sidekick can serve the same bubbles and chat to your iPhone as a Home Screen app, with notifications when a thread needs you, finishes or fails. It's off by default and reachable only through [Tailscale](https://tailscale.com): Sidekick listens on `127.0.0.1` alone, never on your Wi-Fi.
+
+1. Install Tailscale on your Mac and your iPhone and sign both into the same account.
+2. In the Tailscale admin console, turn on **HTTPS Certificates** (DNS page).
+3. Paw menu → **Phone Access…** → switch it on, then click **Turn on HTTPS**. That runs `tailscale serve`, which publishes Sidekick at `https://<your-mac>.<tailnet>.ts.net` on your tailnet only.
+4. Scan the QR code with your iPhone, then Share → **Add to Home Screen**. Open it from the icon and tap **Turn on notifications**.
+
+The link carries a secret key, so treat it like a password. **New link** in the same window cuts off every phone that has the old one. Notifications go through Apple's push service end-to-end encrypted, and your Mac has to be awake to send them.
 
 ## Command line
 

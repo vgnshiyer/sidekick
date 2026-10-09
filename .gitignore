@@ -9,3 +9,4 @@ tools/petgen/out/
 # Written by Claude Code when it loads the plugin from this folder
 bridge/claude-plugin/.claude-plugin/types/
 bridge/claude-plugin/tsconfig.json
+.claude/

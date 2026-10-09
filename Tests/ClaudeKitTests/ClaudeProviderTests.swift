@@ -186,6 +186,18 @@ final class ClaudeProviderTests: XCTestCase {
         XCTAssertEqual(outcome, .queued("Runs after the current turn"))
     }
 
+    func testSendToABusySessionAnswersQueuedWithoutWaitingForTheTurn() async throws {
+        try registry("\(pid).json", sessionId: "s", ["status": "busy"])
+        let hub = BridgeHub()
+        _ = await hub.serverClaudePoll(sessionId: "s")
+        let modTask = mod(hub, ack: nil)
+        let start = Date()
+        let outcome = await provider(hub: hub, timeout: 15).send("hello", to: thread())
+        await modTask.value
+        XCTAssertEqual(outcome, .queued("Runs after the current turn"))
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3, "a queued send answers in about a second, not at the timeout")
+    }
+
     func testSendNeverTakenIsCancelledAndCopied() async throws {
         try registry("\(pid).json", sessionId: "s")
         let hub = BridgeHub()

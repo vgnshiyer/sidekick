@@ -245,21 +245,20 @@ private struct PromptGlyph: Shape {
 }
 
 /// Colored dot plus status label in a tinted capsule.
+/// Status as a single dot: amber needs you, red failed, green ready, blinking blue running, gray idle.
+/// The word is in the tooltip and for VoiceOver.
 struct StatusChip: View {
     let status: ThreadStatus
+    var size: CGFloat = 9
 
     var body: some View {
-        HStack(spacing: 4) {
-            StatusDot(status: status)
-            Text(status.label)
-                .font(.system(size: 11, weight: .medium))
-        }
-        .foregroundStyle(status.labelColor)
-        .padding(.leading, 6)
-        .padding(.trailing, 7)
-        .padding(.vertical, 2.5)
-        .background(Capsule().fill(status.tint.opacity(0.15)))
-        .fixedSize()
+        StatusDot(status: status)
+            .frame(width: size, height: size)
+            .padding(.horizontal, 3)
+            .contentShape(Rectangle())
+            .help(status.label)
+            .accessibilityElement()
+            .accessibilityLabel(status.label)
     }
 }
 
@@ -269,14 +268,11 @@ private struct StatusDot: View {
     @Environment(\.surfaceStyle) private var surfaceStyle
 
     var body: some View {
-        Group {
-            if status == .running, !reduceMotion, surfaceStyle == .live {
-                PulsingDot(color: status.nsTint)
-            } else {
-                Circle().fill(status.tint)
-            }
+        if status == .running, !reduceMotion, surfaceStyle == .live {
+            PulsingDot(color: status.nsTint)
+        } else {
+            Circle().fill(status.tint)
         }
-        .frame(width: 6, height: 6)
     }
 }
 
@@ -326,8 +322,8 @@ private final class PulsingDotView: NSView {
         guard window != nil, let layer, layer.animation(forKey: "pulse") == nil else { return }
         let pulse = CABasicAnimation(keyPath: "opacity")
         pulse.fromValue = 1
-        pulse.toValue = 0.3
-        pulse.duration = 0.9
+        pulse.toValue = 0.2
+        pulse.duration = 0.6
         pulse.autoreverses = true
         pulse.repeatCount = .infinity
         pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)

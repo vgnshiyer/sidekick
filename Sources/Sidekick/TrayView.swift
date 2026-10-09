@@ -169,8 +169,8 @@ private struct BubbleRow: View {
 
 /// Small round button that opens the thread in its own app.
 private struct OpenButton: View {
-    /// Under the chat's buttons, so it keeps clear of the status chip above the subtitle line.
-    static let size: CGFloat = 18
+    /// Sits on the subtitle line, clear of the status dot above it.
+    static let size: CGFloat = 20
 
     let target: String
     let action: () -> Void
@@ -179,7 +179,7 @@ private struct OpenButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "arrow.up.forward")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 10, weight: .bold))
                 .frame(width: Self.size, height: Self.size)
                 .contentShape(Circle())
         }
@@ -189,15 +189,17 @@ private struct OpenButton: View {
     }
 }
 
-/// A quiet filled circle, like the chat panel's buttons, that brightens under the pointer.
+/// A solid accent circle with a white arrow. Glass recolours its own text for whatever is behind it,
+/// but not custom fills, so the button carries its own contrast to stay visible on any backdrop.
 private struct RoundButtonStyle: ButtonStyle {
     let hovering: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        let lit = hovering || configuration.isPressed
         configuration.label
-            .foregroundStyle(lit ? .primary : .secondary)
-            .background(Circle().fill(Color.primary.opacity(configuration.isPressed ? 0.16 : hovering ? 0.12 : 0.07)))
+            .foregroundStyle(.white)
+            .background(Circle().fill(Color.accentColor))
+            .brightness(configuration.isPressed ? -0.12 : hovering ? 0.08 : 0)
+            .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
     }
 }
 

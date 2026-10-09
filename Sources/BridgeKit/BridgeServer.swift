@@ -116,10 +116,11 @@ public final class BridgeServer: @unchecked Sendable {
                 close(client)
                 return
             }
+            let router = router
             let connection = BridgeConnection(
                 fd: client,
                 queue: DispatchQueue(label: "sidekick.bridge.connection", target: workQueue),
-                router: router
+                handler: { await router.respond(to: $0) }
             ) { [weak self] in self?.forget($0) }
             connections[ObjectIdentifier(connection)] = connection
             lock.unlock()
@@ -143,7 +144,7 @@ final class BridgeConnection: @unchecked Sendable {
 
     private let fd: Int32
     private let queue: DispatchQueue
-    private let router: BridgeRouter
+    private let handler: @Sendable (HTTPRequest) async -> HTTPResponse
     private let onClose: (BridgeConnection) -> Void
     private let reader: DispatchSourceRead
     private let deadline: DispatchSourceTimer
@@ -153,10 +154,13 @@ final class BridgeConnection: @unchecked Sendable {
     private var finished = false
     private var closed = false
 
-    init(fd: Int32, queue: DispatchQueue, router: BridgeRouter, onClose: @escaping (BridgeConnection) -> Void) {
+    init(
+        fd: Int32, queue: DispatchQueue, handler: @escaping @Sendable (HTTPRequest) async -> HTTPResponse,
+        onClose: @escaping (BridgeConnection) -> Void
+    ) {
         self.fd = fd
         self.queue = queue
-        self.router = router
+        self.handler = handler
         self.onClose = onClose
         reader = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         deadline = DispatchSource.makeTimerSource(queue: queue)
@@ -194,9 +198,9 @@ final class BridgeConnection: @unchecked Sendable {
             send(.error(400, reason))
         case .complete(let request):
             stopReading()
-            let router = router
+            let handler = handler
             Task { [self] in
-                let response = await router.respond(to: request)
+                let response = await handler(request)
                 queue.async { self.send(response) }
             }
         }

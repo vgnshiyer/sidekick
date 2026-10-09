@@ -24,7 +24,7 @@ let package = Package(
         .executableTarget(
             name: "Sidekick",
             dependencies: ["SidekickCore", "ClaudeKit", "CodexKit", "BridgeKit", "PetKit", "TerminalKit"],
-            resources: [.copy("Resources/Pets")]
+            resources: [.copy("Resources/Pets"), .copy("Resources/Phone")]
         ),
         .executableTarget(name: "sidekick-cli", dependencies: ["SidekickCore", "ClaudeKit", "CodexKit"]),
         .testTarget(name: "ClaudeKitTests", dependencies: ["ClaudeKit"], resources: [.copy("Fixtures")]),

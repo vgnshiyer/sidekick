@@ -99,14 +99,24 @@ public final class ClaudeProvider: ThreadProvider {
 
     private static let copiedReason = "Copied — paste it into the session"
 
-    /// Polls the hub every 100 ms until the mod acks or fails the item, or `sendTimeout` passes.
+    /// How long a taken item may wait for its turn to start before the send reports it as queued.
+    /// An idle session starts the turn about 50 ms after taking it; a busy one only when its turn ends.
+    static let queuedAfter: TimeInterval = 1.5
+
+    /// Polls the hub every 100 ms until the mod acks or fails the item, the item has sat taken
+    /// (queued behind a running turn) for `queuedAfter`, or `sendTimeout` passes.
     /// An item nobody took by then is cancelled.
     private func waitForDelivery(of itemId: String) async -> BridgeHub.Delivery? {
         let deadline = Date().addingTimeInterval(sendTimeout)
+        var takenAt: Date?
         while Date() < deadline {
             switch await hub.delivery(of: itemId) {
             case .submitted: return .submitted
             case .failed(let reason): return .failed(reason)
+            case .taken:
+                let since = takenAt ?? Date()
+                takenAt = since
+                if Date().timeIntervalSince(since) >= Self.queuedAfter { return .taken }
             default: break
             }
             do { try await Task.sleep(nanoseconds: 100_000_000) } catch { break }

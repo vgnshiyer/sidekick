@@ -32,6 +32,8 @@ struct UIState: Codable, Equatable {
     var lastDisplay: String?
     /// Normalized pet position per display (see `PetPosition`).
     var positions: [String: CGPoint] = [:]
+    /// Serve the phone page on the local network.
+    var phoneAccess = false
 
     init() {}
 
@@ -43,6 +45,7 @@ struct UIState: Codable, Equatable {
         trayCollapsed = try container.decodeIfPresent(Bool.self, forKey: .trayCollapsed) ?? false
         lastDisplay = try container.decodeIfPresent(String.self, forKey: .lastDisplay)
         positions = try container.decodeIfPresent([String: CGPoint].self, forKey: .positions) ?? [:]
+        phoneAccess = try container.decodeIfPresent(Bool.self, forKey: .phoneAccess) ?? false
     }
 }
 

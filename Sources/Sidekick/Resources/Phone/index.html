@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sidekick">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Sidekick</title>
+<style>
+:root {
+  --bg: #F2F2F7; --card: #FFFFFF; --label: #000000; --secondary: #6C6C70; --tertiary: #AEAEB2;
+  --separator: rgba(60, 60, 67, 0.18); --accent: #007AFF; --bar: rgba(242, 242, 247, 0.86);
+  --them: #FFFFFF; --them-text: #000000; --me: #007AFF; --me-text: #FFFFFF; --code: rgba(118, 118, 128, 0.12);
+  --amber-bg: #FFF2D9; --amber: #9A5B00; --red-bg: #FFE4E3; --red: #C4231F;
+  --green-bg: #E1F5E6; --green: #1E7B36; --blue-bg: #E3EFFF; --blue: #0A5BC4;
+  --gray-bg: rgba(118, 118, 128, 0.12); --gray: #6C6C70;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --card: #1C1C1E; --label: #FFFFFF; --secondary: #98989F; --tertiary: #636366;
+    --separator: rgba(84, 84, 88, 0.65); --accent: #0A84FF; --bar: rgba(22, 22, 24, 0.86);
+    --them: #26262A; --them-text: #FFFFFF; --me: #0A84FF; --code: rgba(118, 118, 128, 0.24);
+    --amber-bg: #3D2B05; --amber: #FFC45C; --red-bg: #3F1312; --red: #FF8A84;
+    --green-bg: #0F3018; --green: #6BD58A; --blue-bg: #0B2C52; --blue: #7DB6FF;
+    --gray-bg: rgba(118, 118, 128, 0.24); --gray: #98989F;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  background: var(--bg); color: var(--label); -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+}
+body.in-chat { overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.hidden { display: none !important; }
+
+/* No scroll bars anywhere; content scrolls inside its own container. */
+#list, .msgs { scrollbar-width: none; }
+#list::-webkit-scrollbar, .msgs::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Thread list */
+#list {
+  position: fixed; inset: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 24px);
+}
+.hero { display: flex; align-items: center; gap: 14px; padding: 10px 4px 18px; }
+.pet { width: 64px; height: 69.333px; image-rendering: pixelated; flex: none; }
+.hero h1 { font-size: 24px; line-height: 1.15; font-weight: 700; margin: 0 0 3px; letter-spacing: -0.3px; }
+.conn { font-size: 13px; color: var(--secondary); display: flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #34C759; flex: none; }
+.dot.off { background: #FF3B30; }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--card); border-radius: 16px; padding: 12px 14px; display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) max-content; grid-template-rows: auto auto; column-gap: 10px; row-gap: 3px;
+  text-align: left; width: 100%; min-width: 0; overflow: hidden; transition: transform 0.12s ease;
+}
+.card:active { transform: scale(0.985); }
+.badge { width: 24px; height: 24px; grid-row: 1 / span 2; align-self: center; object-fit: contain; }
+.title { min-width: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: center; }
+.sub { grid-column: 2 / span 2; contain: inline-size; min-width: 0; font-size: 14px; color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Status is a dot: amber needs you, red failed, green ready, blinking blue running, gray idle. */
+.sd { width: 10px; height: 10px; border-radius: 50%; flex: none; align-self: center; background: #8E8E93; }
+.s-needsInput { background: #FF9F0A; }
+.s-failed { background: #FF3B30; }
+.s-ready { background: #34C759; }
+.s-running { background: #0A84FF; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
+.notify {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: -6px 0 14px;
+  padding: 11px 14px; border-radius: 14px; background: var(--card); color: var(--accent); font-size: 15px; font-weight: 600;
+}
+.notify:disabled { color: var(--secondary); font-weight: 500; }
+.empty { text-align: center; color: var(--secondary); padding: 48px 24px; font-size: 15px; }
+.foot { text-align: center; color: var(--tertiary); font-size: 12px; margin-top: 22px; }
+
+/* Chat, in the style of the ChatGPT app: plain replies, your messages in bubbles, a roomy composer.
+   A fixed column sized to the visible viewport (keyboard included); only the messages scroll. */
+#chat {
+  --c-bg: var(--bg); --c-text: var(--label); --c-muted: var(--secondary); --c-composer: var(--card); --c-border: var(--separator);
+  --c-me: #F6E0D5; --c-me-text: #3A1A0E; --c-send: #E2703F; --c-send-off: #D1D1D6; --c-code: var(--code); --c-icon: var(--accent);
+  position: fixed; left: 0; right: 0; top: 0; height: var(--vvh, 100dvh);
+  display: flex; flex-direction: column; background: var(--c-bg); color: var(--c-text);
+}
+@media (prefers-color-scheme: dark) {
+  #chat { --c-me: #7A3E28; --c-me-text: #FFFFFF; --c-send-off: #3A3A3C; }
+}
+/* The bar floats over the messages, iOS 26 style: they scroll under it and blur out at its edge. */
+.bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; align-items: center;
+  padding: calc(env(safe-area-inset-top) + 6px) 10px 22px;
+}
+.bar::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(var(--c-bg) calc(100% - 22px), transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent);
+}
+/* Liquid Glass button: frosted, lit from the top edge, a soft shadow, a little squish on press. */
+.glass {
+  width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(0, 0, 0, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1), background 0.18s;
+}
+.glass:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.8); }
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background: rgba(58, 58, 62, 0.55); border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.22), inset 0 -1px 1px rgba(0, 0, 0, 0.25),
+      0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  .glass:active { background: rgba(80, 80, 86, 0.7); }
+}
+.bar-mid { text-align: center; min-width: 0; }
+.bar-title { display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-meta { font-size: 12px; color: var(--c-muted); display: flex; justify-content: center; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; }
+.bar-meta .sd { width: 8px; height: 8px; }
+.msgs { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: calc(env(safe-area-inset-top) + 76px) 18px calc(var(--composer-h, 140px) + 6px); }
+.msg-list { display: flex; flex-direction: column; min-height: 100%; justify-content: flex-end; }
+.turn { display: flex; flex-direction: column; margin: 10px 0 4px; }
+.me-row { align-items: flex-end; }
+.me { max-width: 82%; background: var(--c-me); color: var(--c-me-text); padding: 9px 15px; border-radius: 22px; font-size: 16.5px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.them { font-size: 16.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.them p { margin: 0 0 12px; } .them p:last-child { margin-bottom: 0; }
+.them ul, .them ol { margin: 4px 0 12px; padding-left: 22px; } .them li { margin: 3px 0; }
+.them blockquote { margin: 4px 0 12px; padding-left: 12px; border-left: 3px solid var(--c-border); color: var(--c-muted); }
+.them code { font: 14.5px ui-monospace, "SF Mono", Menlo, monospace; background: var(--c-code); padding: 1px 5px; border-radius: 6px; }
+.them pre { background: var(--c-code); border-radius: 14px; padding: 12px 14px; overflow-x: auto; margin: 6px 0 12px; }
+.them pre code { background: none; padding: 0; font-size: 13.5px; white-space: pre; }
+.actions { display: flex; gap: 2px; margin-top: 4px; }
+.me-row .actions { justify-content: flex-end; }
+.act { width: 32px; height: 30px; display: flex; align-items: center; justify-content: center; color: var(--c-muted); border-radius: 8px; }
+.act:active { background: var(--c-composer); }
+.status { font-size: 12px; color: var(--c-muted); margin: 4px 6px 0; text-align: right; }
+.status.fail { color: var(--red); }
+.retry { color: var(--c-send); font-weight: 600; margin-left: 6px; }
+.pending .me { opacity: 0.7; }
+.hint { color: var(--c-muted); font-size: 15px; text-align: center; padding: 28px; align-self: center; }
+.jump {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--composer-h, 120px) + 12px);
+  width: 36px; height: 36px; border-radius: 50%; background: var(--c-bg); color: var(--c-text);
+  border: 0.5px solid var(--c-border); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16); display: flex; align-items: center; justify-content: center; z-index: 3;
+}
+/* The reply area floats over the messages like the top bar: they scroll under it and blur into it
+   (95% background plus a heavy backdrop blur, faded in at the top edge). */
+.dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 22px 12px calc(env(safe-area-inset-bottom) + 6px); }
+.dock::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: color-mix(in srgb, var(--c-bg) 95%, transparent);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  -webkit-mask-image: linear-gradient(transparent, #000 26px); mask-image: linear-gradient(transparent, #000 26px);
+}
+body.kb .dock { padding-bottom: 8px; }
+.note { font-size: 12px; color: var(--c-muted); text-align: center; padding: 4px 16px 8px; line-height: 1.35; }
+.note.warn { color: var(--amber); }
+.note button { color: inherit; font-weight: 600; text-decoration: underline; }
+.composer { background: var(--c-composer); border-radius: 26px; padding: 12px 10px 8px 16px; border: 0.5px solid var(--c-border); }
+textarea {
+  display: block; width: 100%; resize: none; border: 0; background: transparent; color: var(--c-text);
+  padding: 2px 6px 6px 0; overflow-y: hidden; font-size: 17px; line-height: 1.35; font-family: inherit; max-height: 140px; outline: none;
+}
+textarea::placeholder { color: var(--c-muted); }
+.composer-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+.who { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--c-muted); }
+.who img { width: 18px; height: 18px; object-fit: contain; }
+.send { width: 36px; height: 36px; border-radius: 50%; background: var(--c-send); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; transition: background 0.15s; }
+.send:disabled { background: var(--c-send-off); }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 56px); background: var(--c-text); color: var(--c-bg); font-size: 13px; padding: 6px 12px; border-radius: 999px; z-index: 4; }
+</style>
+</head>
+<body>
+<div id="list">
+  <div class="hero">
+    <canvas id="pet" class="pet" width="192" height="208" aria-label="Pet"></canvas>
+    <div>
+      <h1 id="headline">Sidekick</h1>
+      <div class="conn"><span id="dot" class="dot"></span><span id="conn">Connecting…</span></div>
+    </div>
+  </div>
+  <button class="notify hidden" id="notify">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.6 2H4.4zM10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <span id="notify-text">Turn on notifications</span>
+  </button>
+  <div id="threads" class="list"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<div id="chat" class="hidden">
+  <header class="bar">
+    <button class="glass" id="back" aria-label="Back">
+      <svg width="12" height="19" viewBox="0 0 12 19" aria-hidden="true"><path d="M9.8 2 2.6 9.5l7.2 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="bar-mid">
+      <span class="bar-title" id="c-title"></span>
+      <div class="bar-meta" id="c-meta"></div>
+    </div>
+    <span aria-hidden="true"></span>
+  </header>
+  <main class="msgs" id="msgs"><div class="msg-list" id="msg-list"></div></main>
+  <button class="jump hidden" id="jump" aria-label="Jump to latest">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v10.4M3.4 8.8 8 13.4l4.6-4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="dock" id="dock">
+    <div class="note" id="note"></div>
+    <div class="composer" id="composer">
+      <textarea id="input" rows="1" placeholder="Message…" autocomplete="off"></textarea>
+      <div class="composer-row">
+        <span class="who"><img id="who-badge" alt=""><span id="who-name"></span></span>
+        <button class="send" id="send" aria-label="Send" disabled>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.5V2.8M3.2 7.4 8 2.6l4.8 4.8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const LABEL = { needsInput: "Needs input", failed: "Failed", ready: "Ready", running: "Running", idle: "Idle" };
+let threads = [], openId = null, petId = null, listScroll = 0;
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+/* One line of plain text from Markdown: drop emphasis, code ticks and link targets. */
+function plain(s) {
+  return String(s ?? "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/(\*\*|__|`)/g, "")
+    .replace(/(^|\n)\s*(?:[-*]|\d+[.)]|#+)\s+/g, "$1").replace(/\s+/g, " ").trim();
+}
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return "now";
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  return Math.floor(s / 86400) + "d";
+}
+/* Network trouble throws { offline: true }; an error answer from the Mac throws its message. */
+async function api(path, body, timeout = 30000) {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), timeout);
+  let res;
+  try {
+    res = await fetch(path, body
+      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abort.signal }
+      : { cache: "no-store", signal: abort.signal });
+  } catch { throw { offline: true }; }
+  finally { clearTimeout(timer); }
+  if (!res.ok) {
+    let message = "Your Mac said no (" + res.status + ")";
+    try { message = (await res.json()).error || message; } catch {}
+    throw { message };
+  }
+  return res.json();
+}
+
+/* ---------- Thread list ---------- */
+function headline(list) {
+  const need = list.filter(t => t.status === "needsInput" || t.status === "failed").length;
+  const ready = list.filter(t => t.status === "ready").length;
+  const running = list.filter(t => t.status === "running").length;
+  if (need) return need === 1 ? "1 thread needs you" : need + " threads need you";
+  if (ready) return ready === 1 ? "1 thread is ready" : ready + " threads are ready";
+  if (running) return running === 1 ? "1 thread is working" : running + " threads are working";
+  return list.length ? "All quiet" : "No active threads";
+}
+function setOnline(ok, mac) {
+  $("dot").classList.toggle("off", !ok);
+  $("conn").textContent = ok ? "Connected to " + (mac || "your Mac") : "Can't reach your Mac";
+}
+function card(t) {
+  const sub = plain(t.detail && t.status === "needsInput" ? t.detail + (t.subtitle ? " · " + t.subtitle : "") : (t.subtitle || t.detail || ""));
+  return `<button class="card" data-id="${esc(t.id)}">
+    <img class="badge" src="badge/${esc(t.platform)}.png" alt="${esc(t.platform)}">
+    <span class="title">${esc(t.title)}</span>
+    <span class="sd s-${esc(t.status)}" role="img" aria-label="${esc(LABEL[t.status] || t.status)}"></span>
+    <span class="sub">${esc(sub || ago(t.updatedAt))}</span>
+  </button>`;
+}
+function renderList() {
+  $("headline").textContent = headline(threads);
+  $("threads").innerHTML = threads.length ? threads.map(card).join("") : `<div class="empty">Nothing running on your Mac right now.</div>`;
+  $("foot").textContent = threads.length ? "Updates live while this is open" : "";
+  setMood(threads[0]?.status);
+}
+async function refresh() {
+  try {
+    const data = await api("api/threads");
+    threads = data.threads;
+    setOnline(true, data.mac);
+    if (data.pet.id !== petId) { petId = data.pet.id; loadPet(); }
+    if (!openId) renderList(); else { setMood(threads[0]?.status); renderChatHeader(); }
+    if (!refresh.started && !openId && location.hash) {
+      const id = decodeURIComponent(location.hash.slice(1));
+      if (threads.some(t => t.id === id)) openChat(id, false);
+    }
+    refresh.started = true;
+  } catch { setOnline(false); }
+}
+
+/* ---------- Pet (rows and timings of the Codex pet atlas) ---------- */
+const ROWS = { idle: [0, [280, 110, 110, 140, 140, 320], 3], failed: [5, [140, 140, 140, 140, 140, 140, 140, 240]],
+  waiting: [6, [150, 150, 150, 150, 150, 260]], running: [7, [120, 120, 120, 120, 120, 220]], review: [8, [150, 150, 150, 150, 150, 280]] };
+const MOOD = { needsInput: "waiting", failed: "failed", ready: "review", running: "running" };
+const sheet = new Image(), ctx = $("pet").getContext("2d");
+let row = "idle", frame = 0, petTimer = null;
+function loadPet() { sheet.onload = draw; sheet.src = "pet.png?v=" + encodeURIComponent(petId); }
+function setMood(status) { const next = MOOD[status] || "idle"; if (next !== row) { row = next; frame = 0; tick(); } }
+function draw() {
+  if (!sheet.naturalWidth) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 192, 208);
+  ctx.drawImage(sheet, frame * 192, ROWS[row][0] * 208, 192, 208, 0, 0, 192, 208);
+}
+function tick() {
+  clearTimeout(petTimer);
+  draw();
+  const [, times, slow = 1] = ROWS[row];
+  petTimer = setTimeout(() => { frame = (frame + 1) % times.length; tick(); }, times[frame] * slow);
+}
+
+/* ---------- Chat ---------- */
+let shownIds = [], pending = [], firstPaint = true;
+
+function md(text) {
+  return String(text).split(/```/).map((part, i) => {
+    if (i % 2) return `<pre><code>${esc(part.replace(/^[a-zA-Z0-9_+-]*\n/, ""))}</code></pre>`;
+    const inline = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+    return part.split(/\n{2,}/).map(p => {
+      if (!p.trim()) return "";
+      const lines = p.split("\n").filter(l => l.trim() !== "");
+      if (lines.every(l => /^\s*[-*] /.test(l))) return "<ul>" + lines.map(l => "<li>" + inline(l.replace(/^\s*[-*] /, "")) + "</li>").join("") + "</ul>";
+      if (lines.every(l => /^\s*>/.test(l))) return "<blockquote>" + lines.map(l => inline(l.replace(/^\s*>\s?/, ""))).join("<br>") + "</blockquote>";
+      if (lines.every(l => /^\s*\d+[.)] /.test(l))) return "<ol>" + lines.map(l => "<li>" + inline(l.replace(/^\s*\d+[.)] /, "")) + "</li>").join("") + "</ol>";
+      return "<p>" + lines.map(l => inline(l.replace(/^#+\s+/, ""))).join("<br>") + "</p>";
+    }).join("");
+  }).join("");
+}
+const COPY_ICON = `<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
+const copyText = new Map();
+function bubble(m) {
+  copyText.set(m.id, m.text);
+  const actions = `<div class="actions"><button class="act" data-copy="${esc(m.id)}" aria-label="Copy">${COPY_ICON}</button></div>`;
+  return m.role === "user"
+    ? `<div class="turn me-row" data-id="${esc(m.id)}"><div class="me">${esc(m.text)}</div>${actions}</div>`
+    : `<div class="turn" data-id="${esc(m.id)}"><div class="them">${md(m.text)}</div>${actions}</div>`;
+}
+function statusHTML(p) {
+  return esc(p.status) + (p.failed ? ` <button class="retry" data-retry="${p.key}">Retry</button>` : "");
+}
+function pendingHTML(p) {
+  return `<div class="turn me-row pending" data-pending="${p.key}"><div class="me">${esc(p.text)}</div>` +
+    `<div class="status ${p.failed ? "fail" : ""}" data-status="${p.key}">${statusHTML(p)}</div></div>`;
+}
+function current() { return threads.find(t => t.id === openId); }
+function nearBottom() { const b = $("msgs"); return b.scrollHeight - b.scrollTop - b.clientHeight < 60; }
+function toBottom() { const b = $("msgs"); b.scrollTop = b.scrollHeight; $("jump").classList.add("hidden"); }
+
+function renderChatHeader() {
+  const t = current();
+  if (!t) return;
+  $("c-title").textContent = t.title;
+  const where = { terminal: "Terminal", desktop: t.platform === "claude" ? "Claude app" : "Codex app", ide: "Editor" }[t.surface];
+  const rest = [t.cwd && t.cwd.split("/").pop(), where].filter(Boolean).map(esc);
+  $("c-meta").innerHTML = `<span class="sd s-${esc(t.status)}" role="img" aria-label="${esc(LABEL[t.status] || t.status)}"></span>` + rest.map((b, i) => (i ? "<span>·</span>" : "") + "<span>" + b + "</span>").join("");
+  const name = t.platform === "claude" ? "Claude" : "Codex";
+  $("input").placeholder = "Message " + name;
+  $("who-name").textContent = name;
+  $("who-badge").src = "badge/" + t.platform + ".png";
+  const noteEl = $("note");
+  if (t.status === "needsInput") {
+    noteEl.className = "note warn";
+    noteEl.textContent = (plain(t.detail) || "Waiting for you") + ". Answer it on your Mac.";
+  } else {
+    noteEl.className = "note hidden";
+    noteEl.textContent = "";
+  }
+}
+
+/* Replace or append without disturbing where the reader is. */
+async function loadMessages() {
+  if (!openId) return;
+  const id = openId;
+  let data;
+  try { data = await api("api/messages?limit=60&thread=" + encodeURIComponent(id)); } catch { setOnline(false); return; }
+  if (id !== openId) return;
+  const list = $("msg-list"), msgs = data.messages;
+  const ids = msgs.map(m => m.id);
+  // A sent message is settled once the transcript shows it.
+  const fresh = msgs.filter(m => !shownIds.includes(m.id));
+  pending = pending.filter(p => !fresh.some(m => m.role === "user" && m.text.trim() === p.text.trim()));
+  const stick = firstPaint || nearBottom();
+  const same = ids.length === shownIds.length && ids.every((x, i) => x === shownIds[i]);
+  const appendOnly = !firstPaint && shownIds.length > 0 && shownIds.every((x, i) => ids[i] === x);
+  if (same && !firstPaint) {
+    // nothing new
+  } else if (appendOnly) {
+    list.querySelectorAll("[data-pending]").forEach(n => n.remove());
+    list.insertAdjacentHTML("beforeend", fresh.map(bubble).join("") + pending.map(pendingHTML).join(""));
+    if (!stick) $("jump").classList.remove("hidden");
+  } else {
+    list.innerHTML = msgs.length || pending.length
+      ? msgs.map(bubble).join("") + pending.map(pendingHTML).join("")
+      : `<div class="hint">No messages yet</div>`;
+  }
+  shownIds = ids;
+  if (stick) toBottom();
+  firstPaint = false;
+}
+
+function openChat(id, push = true) {
+  listScroll = $("list").scrollTop;
+  openId = id; shownIds = []; pending = []; firstPaint = true;
+  $("msg-list").innerHTML = `<div class="hint">Loading…</div>`;
+  $("list").classList.add("hidden"); $("chat").classList.remove("hidden");
+  document.body.classList.add("in-chat");
+  if (push) history.pushState({ id }, "", "#" + encodeURIComponent(id));
+  $("input").value = ""; autosize();
+  fitViewport(); renderChatHeader(); loadMessages();
+}
+function closeChat() {
+  openId = null;
+  $("input").blur();
+  $("chat").classList.add("hidden"); $("list").classList.remove("hidden");
+  document.body.classList.remove("in-chat");
+  renderList();
+  $("list").scrollTop = listScroll;
+}
+
+let sendKey = 0;
+function newClientId() {
+  return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+async function send() {
+  const input = $("input"), text = input.value.trim();
+  if (!text || !openId) return;
+  const p = { key: ++sendKey, threadId: openId, text, clientId: newClientId(), status: "Sending…", failed: false };
+  pending.push(p);
+  input.value = ""; autosize();
+  $("msg-list").querySelector(".hint")?.remove();
+  $("msg-list").insertAdjacentHTML("beforeend", pendingHTML(p));
+  toBottom();
+  deliver(p);
+}
+/* One word under the bubble: Sent, or Queued while the agent finishes what it's doing. */
+function shortStatus(data) {
+  const o = data.outcome;
+  if ("delivered" in o) return "Sent";
+  if ("queued" in o) return /paused/i.test(data.message) ? "Paused in Codex" : "Queued";
+  if ("copiedToClipboard" in o) return "Copied on your Mac";
+  return data.message;
+}
+/* Send (or resend) one message. The same clientId makes a resend safe: the Mac delivers it once. */
+async function deliver(p) {
+  const setStatus = (status, failed) => {
+    p.status = status; p.failed = failed;
+    const node = $("msg-list").querySelector(`[data-status="${p.key}"]`);
+    if (node) { node.innerHTML = statusHTML(p); node.classList.toggle("fail", failed); }
+  };
+  setStatus("Sending…", false);
+  try {
+    const data = await api("api/send", { threadId: p.threadId, text: p.text, clientId: p.clientId });
+    setStatus(shortStatus(data), "failed" in data.outcome);
+  } catch (error) {
+    setStatus(error.offline ? "Couldn't reach your Mac" : error.message, true);
+  }
+  setTimeout(loadMessages, 800);
+}
+let toastTimer = null;
+function toast(text) {
+  document.querySelector(".toast")?.remove();
+  $("chat").insertAdjacentHTML("beforeend", `<div class="toast">${esc(text)}</div>`);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => document.querySelector(".toast")?.remove(), 1800);
+}
+
+function autosize() {
+  const stick = nearBottom();
+  const t = $("input");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 140) + "px";
+  t.style.overflowY = t.scrollHeight > 140 ? "auto" : "hidden";
+  $("send").disabled = !t.value.trim();
+  document.documentElement.style.setProperty("--composer-h", $("dock").offsetHeight + "px");
+  if (stick) toBottom();
+}
+
+/* The messages leave room for the floating reply area, whatever its height (note, long drafts). */
+new ResizeObserver(() => {
+  const stick = nearBottom();
+  document.documentElement.style.setProperty("--composer-h", $("dock").offsetHeight + "px");
+  if (stick) toBottom();
+}).observe($("dock"));
+
+/* Keep the chat column the size of what's visible, so the composer rides on top of the keyboard. */
+function fitViewport() {
+  const vv = window.visualViewport;
+  document.documentElement.style.setProperty("--vvh", (vv ? vv.height : innerHeight) + "px");
+  $("chat").style.top = (vv ? vv.offsetTop : 0) + "px";
+  document.body.classList.toggle("kb", vv ? vv.height < innerHeight - 120 : false);
+}
+window.visualViewport?.addEventListener("resize", () => { const stick = nearBottom(); fitViewport(); if (stick) toBottom(); });
+window.visualViewport?.addEventListener("scroll", fitViewport);
+window.addEventListener("resize", fitViewport);
+
+$("threads").addEventListener("click", e => { const c = e.target.closest(".card"); if (c) openChat(c.dataset.id); });
+$("back").addEventListener("click", () => history.state?.id ? history.back() : closeChat());
+window.addEventListener("popstate", e => e.state?.id ? openChat(e.state.id, false) : closeChat());
+$("send").addEventListener("click", send);
+$("msg-list").addEventListener("click", async e => {
+  const retry = e.target.closest("[data-retry]");
+  if (retry) {
+    const p = pending.find(x => String(x.key) === retry.dataset.retry);
+    if (p) deliver(p);
+    return;
+  }
+  const button = e.target.closest("[data-copy]");
+  if (!button) return;
+  try { await navigator.clipboard.writeText(copyText.get(button.dataset.copy) || ""); toast("Copied"); }
+  catch { toast("Couldn't copy"); }
+});
+// Tapping anywhere outside the composer, or dragging the messages, puts the keyboard away.
+document.addEventListener("touchstart", e => {
+  if (document.activeElement === $("input") && !e.target.closest("#composer")) $("input").blur();
+}, { passive: true, capture: true });
+$("msgs").addEventListener("touchmove", () => { if (document.activeElement === $("input")) $("input").blur(); }, { passive: true });
+$("jump").addEventListener("click", toBottom);
+$("msgs").addEventListener("scroll", () => { if (nearBottom()) $("jump").classList.add("hidden"); }, { passive: true });
+$("input").addEventListener("input", autosize);
+$("composer").addEventListener("click", e => { if (!e.target.closest("button")) $("input").focus(); });
+$("input").addEventListener("focus", () => setTimeout(() => { fitViewport(); toBottom(); }, 250));
+// With a hardware keyboard (iPad, desktop), Return sends and Shift+Return adds a line; on a phone Return is a newline.
+$("input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(hover: hover) and (pointer: fine)").matches) { e.preventDefault(); send(); }
+});
+
+/* ---------- Notifications ---------- */
+// iPhones allow web push only in a home-screen app, and only after a tap asks for it.
+const canPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function urlKey(b64) {
+  const s = (b64 + "=".repeat((4 - b64.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+async function pushSubscription() {
+  if (!canPush) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function showNotifyButton() {
+  const button = $("notify");
+  if (!canPush) {
+    // Safari tab: point the way to the home-screen app.
+    button.classList.toggle("hidden", installed);
+    button.disabled = true;
+    $("notify-text").textContent = "Add to Home Screen to get notifications";
+    return;
+  }
+  const sub = Notification.permission === "granted" ? await pushSubscription() : null;
+  if (sub) {
+    // Already on: make sure the Mac still has it (cheap, and it survives a Mac-side reset).
+    api("api/push/subscribe", sub.toJSON()).catch(() => {});
+    button.classList.add("hidden");
+    return;
+  }
+  button.disabled = Notification.permission === "denied";
+  $("notify-text").textContent = button.disabled ? "Notifications are off in Settings" : "Turn on notifications";
+  button.classList.remove("hidden");
+}
+async function enableNotifications() {
+  try {
+    if (await Notification.requestPermission() !== "granted") return showNotifyButton();
+    const reg = await navigator.serviceWorker.ready;
+    const { key } = await api("api/push/key");
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(key) });
+    await api("api/push/subscribe", sub.toJSON());
+    $("notify").classList.add("hidden");
+  } catch (error) {
+    $("notify-text").textContent = error?.offline ? "Couldn't reach your Mac" : "Couldn't turn on notifications";
+  }
+}
+$("notify").addEventListener("click", enableNotifications);
+if (canPush) {
+  navigator.serviceWorker.register("sw.js").then(showNotifyButton).catch(() => {});
+  // A tapped notification while the app is open: go to its thread.
+  navigator.serviceWorker.addEventListener("message", e => {
+    if (e.data?.open && threads.some(t => t.id === e.data.open)) openChat(e.data.open);
+  });
+} else {
+  showNotifyButton();
+}
+
+let poll = null;
+function startPolling() {
+  clearInterval(poll);
+  refresh(); if (openId) loadMessages();
+  poll = setInterval(() => { refresh(); if (openId) loadMessages(); }, 2500);
+}
+document.addEventListener("visibilitychange", () => document.hidden ? clearInterval(poll) : startPolling());
+fitViewport();
+startPolling();
+tick();
+</script>
+</body>
+</html>

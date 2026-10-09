@@ -83,10 +83,18 @@ struct HTTPRequest: Sendable {
 /// A response the bridge sends before closing the connection.
 struct HTTPResponse: Sendable, Equatable {
     var status: Int
-    /// JSON body; nil sends no body (204).
+    /// Body bytes; nil sends no body (204).
     var body: Data?
+    var contentType = "application/json"
+    /// Extra headers, e.g. caching and security headers for the phone page.
+    var headers: [String: String] = [:]
 
     static let noContent = HTTPResponse(status: 204, body: nil)
+
+    /// Any body with its media type.
+    static func data(_ body: Data, contentType: String, headers: [String: String] = [:]) -> HTTPResponse {
+        HTTPResponse(status: 200, body: body, contentType: contentType, headers: headers)
+    }
 
     /// A JSON response; dates are ISO-8601.
     static func json<T: Encodable>(_ value: T, status: Int = 200) -> HTTPResponse {
@@ -106,8 +114,11 @@ struct HTTPResponse: Sendable, Equatable {
     /// Wire bytes, always with `Connection: close`.
     func serialized() -> [UInt8] {
         var head = "HTTP/1.1 \(status) \(Self.reason(status))\r\nConnection: close\r\n"
+        for (name, value) in headers.sorted(by: { $0.key < $1.key }) {
+            head += "\(name): \(value)\r\n"
+        }
         if let body {
-            head += "Content-Type: application/json\r\nContent-Length: \(body.count)\r\n"
+            head += "Content-Type: \(contentType)\r\nContent-Length: \(body.count)\r\n"
         }
         head += "\r\n"
         return Array(head.utf8) + (body.map { Array($0) } ?? [])
@@ -117,7 +128,9 @@ struct HTTPResponse: Sendable, Equatable {
         switch status {
         case 200: return "OK"
         case 204: return "No Content"
+        case 301: return "Moved Permanently"
         case 400: return "Bad Request"
+        case 403: return "Forbidden"
         case 404: return "Not Found"
         case 503: return "Service Unavailable"
         default: return "Internal Server Error"

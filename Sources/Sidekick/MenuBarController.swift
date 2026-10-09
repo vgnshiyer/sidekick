@@ -90,6 +90,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 
         menu.addItem(.separator())
+        let phone = NSMenuItem(title: "Phone Access…", action: #selector(showPhone), keyEquivalent: "")
+        phone.target = self
+        phone.state = app.phone.isOn ? .on : .off
+        menu.addItem(phone)
+
+        menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Sidekick", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
@@ -104,6 +110,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func selectPet(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
         app.selectPet(id: id)
+    }
+
+    @objc private func showPhone() {
+        app.phone.showWindow()
     }
 
     @objc private func togglePet() {
