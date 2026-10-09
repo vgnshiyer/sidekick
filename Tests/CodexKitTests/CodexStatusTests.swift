@@ -111,6 +111,22 @@ final class CodexStatusTests: XCTestCase {
         XCTAssertNil(bare.subtitle)
     }
 
+    /// The desktop app's read state is the seen time for its own threads; the CLI has none.
+    func testDesktopReadStateIsSeen() {
+        var row = CodexThreadRow(
+            id: "t", rolloutPath: nil, updatedAt: at(0), source: "vscode", originator: "Codex Desktop",
+            cwd: nil, branch: nil, title: "T")
+        let tail = RolloutTail(lifecycle: lifecycle(.completed, at: 30))
+        let read = CodexStatus.thread(row: row, tail: tail, hookEvents: [], inProgress: false, unread: false, canSend: true)
+        XCTAssertEqual(read.seenAt, at(30))
+        let unread = CodexStatus.thread(row: row, tail: tail, hookEvents: [], inProgress: false, unread: true, canSend: true)
+        XCTAssertNil(unread.seenAt)
+        row.originator = "codex-tui"
+        row.source = "cli"
+        let cli = CodexStatus.thread(row: row, tail: tail, hookEvents: [], inProgress: false, unread: false, canSend: true)
+        XCTAssertNil(cli.seenAt)
+    }
+
     func testUnreadThreadIds() throws {
         let json = """
             {"other": 1, "electron-thread-read-state-v1": {"version": 1, "unreadByIdentity": {

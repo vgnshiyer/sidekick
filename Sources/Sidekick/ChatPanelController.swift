@@ -65,6 +65,7 @@ final class ChatPanelController {
 
     func show(_ thread: AgentThread, anchor: CGRect, growsRight: Bool) {
         store.acknowledge(thread)
+        store.onScreen = thread.id
         let model = ChatModel(thread: store.thread(id: thread.id) ?? thread, store: store)
         model.onClose = { [weak self] in self?.close() }
         model.onSent = { [weak self] in self?.onSent() }
@@ -89,6 +90,7 @@ final class ChatPanelController {
         panel.orderOut(nil)
         panel.contentView = nil
         model = nil
+        store.onScreen = nil
     }
 
     /// A global monitor only sees clicks in other apps' windows (and the desktop), never Sidekick's own,

@@ -92,6 +92,11 @@ public enum SystemActions {
         await MainActor.run { NSWorkspace.shared.open(url) }
     }
 
+    /// The bundle id of the app in front.
+    public static func frontmostBundleIdentifier() async -> String? {
+        await MainActor.run { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+    }
+
     public static func copyToClipboard(_ text: String) async {
         await MainActor.run {
             let pb = NSPasteboard.general

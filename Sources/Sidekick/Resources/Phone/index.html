@@ -147,6 +147,11 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .status.fail { color: var(--red); }
 .retry { color: var(--c-send); font-weight: 600; margin-left: 6px; }
 .pending .me { opacity: 0.7; }
+/* While the agent works: a turning ring where its reply will appear. */
+.working { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; color: var(--c-muted); font-size: 15px; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--c-border); border-top-color: var(--c-send); animation: spin 0.8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
 .hint { color: var(--c-muted); font-size: 15px; text-align: center; padding: 28px; align-self: center; }
 .jump {
   position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--composer-h, 120px) + 12px);
@@ -381,6 +386,26 @@ function pendingHTML(p) {
 function current() { return threads.find(t => t.id === openId); }
 function nearBottom() { const b = $("msgs"); return b.scrollHeight - b.scrollTop - b.clientHeight < 60; }
 function toBottom() { const b = $("msgs"); b.scrollTop = b.scrollHeight; $("jump").classList.add("hidden"); }
+/* "Claude is working…" at the end of the chat while the thread runs, or right after a send lands. */
+function updateWorking() {
+  const t = current(), list = $("msg-list");
+  // A send counts for a minute, until the thread itself shows it running.
+  const sent = pending.some(p => (p.status === "Sent" || p.status === "Queued") && Date.now() - p.at < 60000);
+  const on = !!t && (t.status === "running" || (sent && t.status !== "needsInput"));
+  let node = $("working");
+  if (!on) { node?.remove(); return; }
+  const stick = nearBottom();
+  if (!node) {
+    node = document.createElement("div");
+    node.id = "working"; node.className = "working"; node.setAttribute("role", "status");
+    node.innerHTML = `<span class="spin" aria-hidden="true"></span><span></span>`;
+  }
+  const name = t.platform === "claude" ? "Claude" : "Codex";
+  node.lastChild.textContent = t.status === "running" && t.detail ? plain(t.detail) + "…" : name + " is working…";
+  if (node !== list.lastElementChild) list.appendChild(node);  // stay below new messages
+  list.querySelector(".hint")?.remove();
+  if (stick) toBottom();
+}
 
 function renderChatHeader() {
   const t = current();
@@ -401,6 +426,7 @@ function renderChatHeader() {
     noteEl.className = "note hidden";
     noteEl.textContent = "";
   }
+  updateWorking();
 }
 
 /* Replace or append without disturbing where the reader is. */
@@ -432,6 +458,7 @@ async function loadMessages() {
       : `<div class="hint">No messages yet</div>`;
   }
   shownIds = ids;
+  updateWorking();
   if (stick) toBottom();
   firstPaint = false;
 }
@@ -489,6 +516,7 @@ async function deliver(p) {
     savePending();
     const node = $("msg-list").querySelector(`[data-status="${CSS.escape(p.clientId)}"]`);
     if (node) { node.innerHTML = statusHTML(p); node.classList.toggle("fail", failed); }
+    updateWorking();
   };
   inFlight.add(p.clientId);
   setStatus("Sending…", false);

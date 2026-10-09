@@ -98,6 +98,9 @@ public struct AgentThread: Identifiable, Codable, Sendable, Hashable {
     public var branch: String?
     public var updatedAt: Date
     public var lastTurnEndedAt: Date?
+    /// When the tool itself last showed the thread to the user (its own read state), if it knows.
+    /// Replies that ended by then aren't new.
+    public var seenAt: Date?
     /// True when a send lands directly in the live session (Claude bridge connected; Codex queue).
     public var canSendLive: Bool
     /// Provider-specific routing data (pid, hostSessionId, transcriptPath, rolloutPath, tmux, entrypoint...).
@@ -115,6 +118,7 @@ public struct AgentThread: Identifiable, Codable, Sendable, Hashable {
         branch: String? = nil,
         updatedAt: Date,
         lastTurnEndedAt: Date? = nil,
+        seenAt: Date? = nil,
         canSendLive: Bool = false,
         extra: [String: String] = [:]
     ) {
@@ -130,6 +134,7 @@ public struct AgentThread: Identifiable, Codable, Sendable, Hashable {
         self.branch = branch
         self.updatedAt = updatedAt
         self.lastTurnEndedAt = lastTurnEndedAt
+        self.seenAt = seenAt
         self.canSendLive = canSendLive
         self.extra = extra
     }

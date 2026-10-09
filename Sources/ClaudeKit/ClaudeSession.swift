@@ -30,7 +30,7 @@ struct ClaudeSession: Sendable {
         return candidates.lazy.compactMap { $0.flatMap(DisplayLine.first) }.first ?? "New session"
     }
 
-    func thread(canSendLive: Bool) -> AgentThread {
+    func thread(canSendLive: Bool, seenAt: Date? = nil) -> AgentThread {
         let (status, detail) = status
         var extra = ["pid": String(record.pid)]
         extra["entrypoint"] = record.entrypoint
@@ -50,6 +50,7 @@ struct ClaudeSession: Sendable {
             branch: summary?.gitBranch,
             updatedAt: dates.compactMap { $0 }.max() ?? .distantPast,
             lastTurnEndedAt: summary?.lastTurnEndedAt,
+            seenAt: seenAt,
             canSendLive: canSendLive,
             extra: extra)
     }

@@ -54,7 +54,9 @@ final class ClaudeProviderTests: XCTestCase {
     }
 
     private func provider(hub: BridgeHub = BridgeHub(), effects: Effects = Effects(), timeout: TimeInterval = 15) -> ClaudeProvider {
-        ClaudeProvider(hub: hub, claudeDir: home.root, actions: effects.actions, sendTimeout: timeout)
+        ClaudeProvider(
+            hub: hub, claudeDir: home.root, actions: effects.actions, sendTimeout: timeout,
+            readState: DesktopReadState(root: home.root.appendingPathComponent("desktop-sessions")))
     }
 
     private func first(_ provider: ClaudeProvider) async throws -> AgentThread {

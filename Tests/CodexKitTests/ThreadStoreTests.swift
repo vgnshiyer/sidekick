@@ -14,10 +14,11 @@ final class ThreadStoreTests: XCTestCase {
         func open(_ thread: AgentThread) async -> Bool { true }
     }
 
-    private func thread(_ status: ThreadStatus, endedAgo seconds: TimeInterval?) -> AgentThread {
+    private func thread(_ status: ThreadStatus, endedAgo seconds: TimeInterval?, seenAgo seen: TimeInterval? = nil) -> AgentThread {
         AgentThread(
             platform: .codex, nativeId: "t1", surface: .desktop, title: "T", status: status,
-            updatedAt: Date(), lastTurnEndedAt: seconds.map { Date().addingTimeInterval(-$0) })
+            updatedAt: Date(), lastTurnEndedAt: seconds.map { Date().addingTimeInterval(-$0) },
+            seenAt: seen.map { Date().addingTimeInterval(-$0) })
     }
 
     func testUnreadThreadStaysReadyUntilAcknowledged() async {
@@ -53,5 +54,48 @@ final class ThreadStoreTests: XCTestCase {
         XCTAssertEqual(store.threads.map(\.status), [.idle])
         await store.refresh()
         XCTAssertEqual(store.threads.map(\.status), [.idle])
+    }
+
+    func testSeenInTheToolCountsAsSeen() async {
+        let provider = FakeProvider()
+        let store = ThreadStore(providers: [provider], persist: false)
+
+        provider.threads = [thread(.idle, endedAgo: 60, seenAgo: 30)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.idle], "looked at in its own app after the reply")
+
+        provider.threads = [thread(.idle, endedAgo: 60, seenAgo: 90)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.ready], "last looked at before the reply")
+
+        provider.threads = [thread(.ready, endedAgo: 60, seenAgo: 10)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.idle], "the tool's unread state clears once it's seen")
+    }
+
+    func testRepliesInTheOpenChatAreSeen() async {
+        let provider = FakeProvider()
+        let store = ThreadStore(providers: [provider], persist: false)
+        store.onScreen = "codex:t1"
+
+        provider.threads = [thread(.idle, endedAgo: 5)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.idle], "the reply landed in the open chat")
+
+        store.onScreen = nil
+        provider.threads = [thread(.idle, endedAgo: 1)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.ready], "a later reply after the chat closed is new")
+    }
+
+    func testReadingMessagesOverTheAPIAcknowledges() async {
+        let provider = FakeProvider()
+        provider.threads = [thread(.idle, endedAgo: 60)]
+        let store = ThreadStore(providers: [provider], persist: false)
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.ready])
+
+        _ = await store.apiMessages(threadId: "codex:t1", limit: 5)
+        XCTAssertEqual(store.threads.map(\.status), [.idle], "the phone opened the chat")
     }
 }

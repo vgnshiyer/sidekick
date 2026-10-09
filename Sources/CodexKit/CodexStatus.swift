@@ -62,10 +62,12 @@ enum CodexStatus {
         extra["rolloutPath"] = row.rolloutPath
         extra["originator"] = row.originator
         extra["source"] = row.source
+        let surface = surface(originator: row.originator, source: row.source)
+        let turnEnded = lifecycle?.event == .completed ? lifecycle?.date : nil
         return AgentThread(
             platform: .codex,
             nativeId: row.id,
-            surface: surface(originator: row.originator, source: row.source),
+            surface: surface,
             title: row.title,
             status: status,
             detail: detail,
@@ -73,7 +75,9 @@ enum CodexStatus {
             cwd: row.cwd,
             branch: row.branch,
             updatedAt: row.updatedAt,
-            lastTurnEndedAt: lifecycle?.event == .completed ? lifecycle?.date : nil,
+            lastTurnEndedAt: turnEnded,
+            // The desktop app keeps read state for its own threads: read there means seen through the last turn.
+            seenAt: surface == .desktop && !unread ? turnEnded ?? row.updatedAt : nil,
             canSendLive: canSend,
             extra: extra)
     }

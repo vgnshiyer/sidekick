@@ -9,6 +9,7 @@ public final class ClaudeProvider: ThreadProvider {
     public let platform: Platform = .claude
     private let hub: BridgeHub
     private let index: SessionIndex
+    private let readState: DesktopReadState
     private let actions: Actions
     private let sendTimeout: TimeInterval
 
@@ -19,9 +20,13 @@ public final class ClaudeProvider: ThreadProvider {
         self.init(hub: hub, claudeDir: claudeDir, actions: .live, sendTimeout: 15)
     }
 
-    init(hub: BridgeHub, claudeDir: URL, actions: Actions, sendTimeout: TimeInterval) {
+    init(
+        hub: BridgeHub, claudeDir: URL, actions: Actions, sendTimeout: TimeInterval,
+        readState: DesktopReadState = DesktopReadState()
+    ) {
         self.hub = hub
         self.index = SessionIndex(claudeDir: claudeDir)
+        self.readState = readState
         self.actions = actions
         self.sendTimeout = sendTimeout
     }
@@ -31,18 +36,33 @@ public final class ClaudeProvider: ThreadProvider {
         var copy: @Sendable (String) async -> Void
         var openURL: @Sendable (URL) async -> Bool
         var focusTerminal: @Sendable (_ pid: Int32?, _ cwd: String?, _ titleHint: String?, _ tmux: String?) async -> Bool
+        var frontmostApp: @Sendable () async -> String? = { nil }
 
         static let live = Actions(
             copy: { await SystemActions.copyToClipboard($0) },
             openURL: { await SystemActions.open($0) },
-            focusTerminal: { await TerminalFocus.focus(pid: $0, cwd: $1, titleHint: $2, tmux: $3) })
+            focusTerminal: { await TerminalFocus.focus(pid: $0, cwd: $1, titleHint: $2, tmux: $3) },
+            frontmostApp: { await SystemActions.frontmostBundleIdentifier() })
     }
 
+    static let desktopAppId = "com.anthropic.claudefordesktop"
+
     public func snapshot() async -> [AgentThread] {
+        let read = readState.entries()
+        // With Claude.app in front, the session on screen is the one you switched to last.
+        let onScreen = await actions.frontmostApp() == Self.desktopAppId
+            ? read.max { ($0.value.focusedAt ?? .distantPast) < ($1.value.focusedAt ?? .distantPast) }?.key
+            : nil
         var threads: [AgentThread] = []
         for session in await index.sessions() {
             let live = await hub.isClaudeBridgeLive(sessionId: session.record.sessionId)
-            threads.append(session.thread(canSendLive: live))
+            var seenAt: Date?
+            if let host = session.record.hostSessionId, let entry = read[host] {
+                seenAt = entry.seenAt
+                // On screen now: its latest reply is being seen as it lands.
+                if host == onScreen, let end = session.summary?.lastTurnEndedAt { seenAt = max(seenAt ?? end, end) }
+            }
+            threads.append(session.thread(canSendLive: live, seenAt: seenAt))
         }
         return threads
     }

@@ -14,6 +14,8 @@ public final class ThreadStore: ObservableObject {
     private var timer: Timer?
     private var refreshing = false
     private let persist: Bool
+    /// The thread open in Sidekick's chat, if any: replies that land in it are seen as they arrive.
+    public var onScreen: String?
 
     /// - Parameter persist: save acknowledgements to `Paths.stateFile` (off for demo/tests).
     public init(providers: [ThreadProvider], persist: Bool = true) {
@@ -62,22 +64,30 @@ public final class ThreadStore: ObservableObject {
 
         let now = Date()
         var result: [AgentThread] = []
+        var acked = false
         for var t in all {
+            if t.id == onScreen, let end = t.lastTurnEndedAt, (acks[t.id] ?? .distantPast) < end {
+                acks[t.id] = end
+                acked = true
+            }
             let firstSeen = sightings[t.id]?.first ?? now
             sightings[t.id] = (firstSeen, now)
+            // Seen here (acknowledged) or in the tool itself, whichever is later.
+            let seen = [acks[t.id], t.seenAt].compactMap { $0 }.max()
             switch t.status {
             case .idle:
                 // Turns that ended before Sidekick first saw the thread count as seen, unless recent.
-                let ackedAt = acks[t.id] ?? firstSeen.addingTimeInterval(-15 * 60)
-                if let end = t.lastTurnEndedAt, end > ackedAt { t.status = .ready }
+                let since = seen ?? firstSeen.addingTimeInterval(-15 * 60)
+                if let end = t.lastTurnEndedAt, end > since { t.status = .ready }
             case .ready:
-                // The tool's own unread state stands until the user acknowledges the thread here.
-                if let acked = acks[t.id], (t.lastTurnEndedAt ?? .distantPast) <= acked { t.status = .idle }
+                // The tool's own unread state stands until the thread is seen after its last turn.
+                if let seen, (t.lastTurnEndedAt ?? .distantPast) <= seen { t.status = .idle }
             default:
                 break
             }
             result.append(t)
         }
+        if acked { saveAcks() }
         sightings = sightings.filter { now.timeIntervalSince($0.value.last) < 24 * 3600 }
         result.sort {
             if $0.status.rank != $1.status.rank { return $0.status.rank < $1.status.rank }
@@ -158,8 +168,13 @@ extension ThreadStore: SidekickAPI {
         await MainActor.run { threads }
     }
 
+    /// Reading a thread's messages (the phone's open chat polls this) counts as seeing it.
     nonisolated public func apiMessages(threadId: String, limit: Int) async -> [ChatMessage] {
-        guard let t = await MainActor.run(body: { thread(id: threadId) }) else { return [] }
+        guard let t = await MainActor.run(body: { () -> AgentThread? in
+            guard let t = thread(id: threadId) else { return nil }
+            if t.status == .ready { acknowledge(t) }
+            return t
+        }) else { return [] }
         return await messages(for: t, limit: limit)
     }
 
