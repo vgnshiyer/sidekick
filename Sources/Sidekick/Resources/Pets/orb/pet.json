@@ -1,0 +1,7 @@
+{
+  "id": "orb",
+  "displayName": "Orb",
+  "description": "A glossy little ball that keeps an eye on your threads.",
+  "spriteVersionNumber": 1,
+  "spritesheetPath": "spritesheet.png"
+}

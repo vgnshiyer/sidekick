@@ -49,7 +49,7 @@ final class AppController {
     }
 
     /// The built-in pets' order (the README's pets image matches it); other pets follow by root, then name.
-    static let leadingPets = ["pal", "clawd", "codex", "cat", "capybara", "duck", "hamster", "octopus"]
+    static let leadingPets = ["pal", "orb", "clawd", "codex", "cat", "capybara", "duck", "hamster", "octopus"]
 
     /// The pets in `petRoots`, plus the Codex mascot read from the Codex app when it's installed.
     static func loadPets() -> [PetPack] {

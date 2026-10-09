@@ -15,7 +15,7 @@ A desktop pet for macOS that keeps an eye on your coding agents. It watches ever
 - **Mini chat.** Click a bubble for a small chat: the recent messages plus a box to send a command into that same live thread.
 - **Phone.** The same list and chat on your iPhone, with notifications, through Tailscale. See [Use it from your phone](#use-it-from-your-phone).
 - **Open.** **Open in …** in the chat jumps to the thread in its own app. That's the Claude desktop session, the Codex thread, or the exact terminal tab (Terminal.app, Ghostty or tmux).
-- **Pets.** Seven built in: Pal (Sidekick's own, from the logo), Clawd, Cat, Capybara, Rubber Duck, Hamster and Octopus. With the Codex app installed, Codex's own mascot joins them. Pets use the [Codex pet format](#pets), so Codex custom pets work too, and a custom pet can talk with a [quip bubble](#pets).
+- **Pets.** Eight built in: Pal (Sidekick's own, from the logo), Orb, Clawd, Cat, Capybara, Rubber Duck, Hamster and Octopus. With the Codex app installed, Codex's own mascot joins them. Pets use the [Codex pet format](#pets), so Codex custom pets work too, and a custom pet can talk with a [quip bubble](#pets).
 
 <p align="center">
   <img src="docs/images/chat.png" width="380" alt="The mini chat for one thread">
@@ -123,7 +123,7 @@ python3 tools/petgen/petgen.py build cat      # writes the pack plus previews in
 
 Sidekick isn't affiliated with Anthropic or OpenAI.
 
-- **Clawd** is Anthropic's Claude Code mascot; the pet is fan art. The **Codex** pet is OpenAI's Codex mascot, loaded from the installed Codex app; the pets image above shows it. The MIT license below covers Sidekick's code and the original pets (Pal, Cat, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover Clawd or the Codex mascot.
+- **Clawd** is Anthropic's Claude Code mascot; the pet is fan art. The **Codex** pet is OpenAI's Codex mascot, loaded from the installed Codex app; the pets image above shows it. The MIT license below covers Sidekick's code and the original pets (Pal, Orb, Cat, Capybara, Rubber Duck, Hamster and Octopus). It doesn't cover Clawd or the Codex mascot.
 - The Claude and Codex logos in the bubbles, and the Codex pet's spritesheet, are read at runtime from the apps installed on your Mac; this repository doesn't include those files.
 
 ## License
