@@ -97,6 +97,7 @@ final class AppController {
             store.hide(thread)
         }
         petPanel.onPetInteraction = { [weak self] in self?.chat.close() }
+        petPanel.onHidePet = { [weak self] in self?.setPetVisible(false) }
         chat.onSent = { [weak self] in self?.petPanel.say(.sent) }
         chat.onOpened = { [weak self] in self?.petPanel.collapseTray() }
         subscription = store.$threads.sink { [weak self] threads in

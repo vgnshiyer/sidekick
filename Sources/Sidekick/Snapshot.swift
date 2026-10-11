@@ -37,6 +37,12 @@ enum Snapshot {
                                 appearance: appearance, to: directory, "overlay-\(name).png")
                 try await write(overlayView(threads, sprite: sprite, collapsed: true),
                                 appearance: appearance, to: directory, "overlay-collapsed-\(name).png")
+                for (step, id) in [(PhoneSetupStep.installTailscale, "install"), (.connectTailscale, "connect"), (.enableHTTPS, "https")] {
+                    let view = PhoneSetupStepView(step: step, action: {}).padding(20)
+                        .background(Color(nsColor: .windowBackgroundColor))
+                    try await write(hosting(view, size: CGSize(width: 380, height: 170)),
+                                    appearance: appearance, to: directory, "phone-setup-\(id)-\(name).png")
+                }
                 if let talker, let line = talker.quips?.working {
                     let sprite = PetSprite(pack: talker)
                     try await write(overlayView(threads, sprite: sprite, collapsed: true, quip: line),

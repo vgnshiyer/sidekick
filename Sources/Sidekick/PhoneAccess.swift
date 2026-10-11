@@ -72,6 +72,14 @@ final class PhoneAccessController: ObservableObject {
         Task { await refreshTailscale() }
     }
 
+    /// What's left before a phone can connect, or nil once the link is ready (or access is off).
+    var setupStep: PhoneSetupStep? {
+        guard isOn, url == nil else { return nil }
+        if Tailscale.cli == nil { return .installTailscale }
+        if tailscale == nil { return .connectTailscale }
+        return .enableHTTPS
+    }
+
     /// Tailscale is connected but isn't serving Sidekick over HTTPS yet.
     var needsHTTPS: Bool {
         guard isOn, let tailscale else { return false }
@@ -87,26 +95,36 @@ final class PhoneAccessController: ObservableObject {
     func refreshTailscale() async {
         let status = await Tailscale.status()
         tailscale = status
-        if status == nil {
-            tailscaleNote = Tailscale.cli == nil
-                ? "Install Tailscale on this Mac and your phone, and sign both into the same account."
-                : "Tailscale is installed but not connected. Open it and sign in."
-        } else {
-            tailscaleNote = nil
-        }
+        if status != nil, !busy { tailscaleNote = nil }
     }
 
     /// Ask Tailscale to serve Sidekick at https://<mac>.<tailnet>.ts.net (tailnet only, never public).
     func enableHTTPS() async {
         guard isOn else { return }
+        busy = true
+        defer { busy = false }
         tailscaleNote = "Turning on HTTPS…"
-        if let problem = await Tailscale.serve(port: Self.preferredPort) {
-            tailscaleNote = problem
-        } else {
-            tailscaleNote = nil
-        }
+        let problem = await Tailscale.serve(port: Self.preferredPort)
         await refreshTailscale()
+        tailscaleNote = problem
     }
+
+    private var polling: Task<Void, Never>?
+
+    /// While the window is up, follow Tailscale as it connects or disconnects.
+    private func startPolling() {
+        guard polling == nil else { return }
+        polling = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                guard let self, window?.isVisible == true, isOn, !busy else { continue }
+                await refreshTailscale()
+            }
+        }
+    }
+
+    /// Turning on HTTPS is running; polling waits so its note stays up.
+    @Published private(set) var busy = false
 
     private func stop() {
         server?.stop()
@@ -118,6 +136,7 @@ final class PhoneAccessController: ObservableObject {
 
     func showWindow() {
         Task { await refreshTailscale() }
+        startPolling()
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
@@ -209,7 +228,7 @@ private struct PhoneAccessView: View {
             Toggle(isOn: Binding(get: { controller.isOn }, set: { controller.setOn($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Let my phone connect").font(.system(size: 13, weight: .semibold))
-                    Text("From anywhere, through Tailscale. Never over Wi-Fi.")
+                    Text("From anywhere, privately, through Tailscale.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             }
@@ -246,7 +265,7 @@ private struct PhoneAccessView: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 14).fill(.white))
             }
-            Text("Scan with your iPhone's camera, then tap Share → Add to Home Screen.")
+            Text("On your iPhone: install Tailscale and sign in with the same account. Then scan this with the camera and tap Share → Add to Home Screen.")
                 .font(.system(size: 12))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -265,35 +284,16 @@ private struct PhoneAccessView: View {
         }
     }
 
-    /// What's left before the phone can connect.
+    @ViewBuilder
     private var setup: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            step(done: controller.tailscale != nil, "Tailscale on this Mac, signed in")
-            step(done: nil, "Tailscale on your iPhone, same account")
-            step(done: nil, "HTTPS certificates on for your tailnet (login.tailscale.com/admin/dns)")
-            step(done: controller.needsHTTPS ? false : nil, "Sidekick served over HTTPS on your tailnet")
-            if let note = controller.tailscaleNote {
-                Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+        if let step = controller.setupStep {
+            PhoneSetupStepView(step: step, note: controller.tailscaleNote, busy: controller.busy) {
+                switch step {
+                case .installTailscale: NSWorkspace.shared.open(URL(string: "https://tailscale.com/download/mac")!)
+                case .connectTailscale: NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Tailscale.app"))
+                case .enableHTTPS: Task { await controller.enableHTTPS() }
+                }
             }
-            HStack {
-                Button("Check again") { Task { await controller.refreshTailscale() } }
-                Spacer()
-                Button("Turn on HTTPS") { Task { await controller.enableHTTPS() } }
-                    .disabled(!controller.needsHTTPS)
-                    .help("Runs tailscale serve: HTTPS on your tailnet only, never public")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// A checklist line; `done` nil means Sidekick can't tell from here.
-    private func step(done: Bool?, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: done == true ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done == true ? Color.green : Color.secondary)
-            Text(text).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -436,6 +436,67 @@ final class PushNotifier {
             return PushNotification(title: thread.title, body: "\(agent) failed", threadId: thread.id, urgent: false)
         case .running, .idle:
             return nil
+        }
+    }
+}
+
+/// The one thing left to do before a phone can connect.
+enum PhoneSetupStep {
+    case installTailscale, connectTailscale, enableHTTPS
+}
+
+/// The next setup step: what it is, why, and a button that does it. The window re-checks on its own.
+struct PhoneSetupStepView: View {
+    let step: PhoneSetupStep
+    var note: String?
+    var busy = false
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.system(size: 13, weight: .semibold))
+            Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let note {
+                Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            HStack {
+                Button(button, action: action)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(busy)
+                Spacer()
+                ProgressView().controlSize(.small)
+                Text("Checking…").font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(.quaternary.opacity(0.5)))
+    }
+
+    private var title: String {
+        switch step {
+        case .installTailscale: "Install Tailscale on this Mac"
+        case .connectTailscale: "Open Tailscale and sign in"
+        case .enableHTTPS: "One last step: turn on HTTPS"
+        }
+    }
+
+    private var detail: String {
+        switch step {
+        case .installTailscale: "Tailscale links your Mac and phone privately. It's free."
+        case .connectTailscale: "Tailscale is installed on this Mac but isn't connected. Click its menu bar icon and connect."
+        case .enableHTTPS: "Sidekick needs an HTTPS address on your tailnet. Only your own devices can reach it."
+        }
+    }
+
+    private var button: String {
+        switch step {
+        case .installTailscale: "Get Tailscale"
+        case .connectTailscale: "Open Tailscale"
+        case .enableHTTPS: "Turn on HTTPS"
         }
     }
 }

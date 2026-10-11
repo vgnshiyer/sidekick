@@ -37,6 +37,7 @@ final class PetSpriteView: NSView {
     var onClick: () -> Void = {}
     var onDragBegan: () -> Void = {}
     var onDragEnded: () -> Void = {}
+    var onRightClick: (NSEvent) -> Void = { _ in }
 
     private var pressLocation: NSPoint?
     private var lastDragLocation = NSPoint.zero
@@ -144,6 +145,10 @@ final class PetSpriteView: NSView {
     // MARK: mouse
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onRightClick(event)
+    }
 
     override func mouseDown(with event: NSEvent) {
         pressLocation = NSEvent.mouseLocation

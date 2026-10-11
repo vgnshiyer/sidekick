@@ -58,6 +58,8 @@ final class PetPanelController {
     var onOpenThread: (AgentThread) -> Void = { _ in }
     /// Hide, from a bubble's right-click menu.
     var onHideThread: (AgentThread) -> Void = { _ in }
+    /// Hide Pet, from the pet's right-click menu.
+    var onHidePet: () -> Void = {}
     /// The pet was clicked or started moving; the chat should get out of the way.
     var onPetInteraction: () -> Void = {}
     /// False while the displays sleep or the user's session is switched out.
@@ -82,6 +84,12 @@ final class PetPanelController {
             // A click can still nudge the panel a few points under the window server; put it back.
             self?.relayout()
             self?.toggleCollapsed()
+        }
+        spriteView.onRightClick = { [weak self, weak spriteView] event in
+            guard let self, let spriteView else { return }
+            let menu = NSMenu()
+            menu.addItem(ClosureMenuItem(title: "Hide Pet") { [weak self] in self?.onHidePet() })
+            NSMenu.popUpContextMenu(menu, with: event, for: spriteView)
         }
         spriteView.onDragBegan = { [weak self] in
             guard let self else { return }
@@ -348,4 +356,19 @@ final class PetPanelController {
             panel.ignoresMouseEvents = !interactive
         }
     }
+}
+
+/// A menu item that runs a closure.
+private final class ClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(run), keyEquivalent: "")
+        target = self
+    }
+
+    required init(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    @objc private func run() { handler() }
 }
