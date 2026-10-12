@@ -37,13 +37,19 @@ final class PetSpriteView: NSView {
     var onClick: () -> Void = {}
     var onDragBegan: () -> Void = {}
     var onDragEnded: () -> Void = {}
-    var onRightClick: (NSEvent) -> Void = { _ in }
+    /// The pet's menu was asked for (right-click, Control-click, or press and hold), at a point in this view.
+    var onMenu: (NSPoint) -> Void = { _ in }
 
     private var pressLocation: NSPoint?
+    private var pressStart: TimeInterval = 0
+    /// The press has lasted long enough to be a hold; the pet already reacted.
+    private var holding = false
     private var lastDragLocation = NSPoint.zero
     private var dragging = false
 
     static let dragThreshold: CGFloat = 4
+    /// A press this long without moving opens the menu when it's released.
+    static let holdDuration: TimeInterval = 0.5
 
     private static var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
@@ -147,12 +153,19 @@ final class PetSpriteView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func rightMouseDown(with event: NSEvent) {
-        onRightClick(event)
+        onMenu(convert(event.locationInWindow, from: nil))
     }
 
     override func mouseDown(with event: NSEvent) {
+        // Control-click is a right-click too.
+        if event.modifierFlags.contains(.control) {
+            onMenu(convert(event.locationInWindow, from: nil))
+            return
+        }
         pressLocation = NSEvent.mouseLocation
         lastDragLocation = NSEvent.mouseLocation
+        pressStart = Self.now
+        holding = false
         dragging = false
         beginWindowServerDrag(with: event)
     }
@@ -187,7 +200,15 @@ final class PetSpriteView: NSView {
         }
         let location = NSEvent.mouseLocation
         if !dragging {
-            guard hypot(location.x - pressLocation.x, location.y - pressLocation.y) >= Self.dragThreshold else { return }
+            guard hypot(location.x - pressLocation.x, location.y - pressLocation.y) >= Self.dragThreshold else {
+                // Held still: the pet perks up so you know letting go opens its menu.
+                if !holding, Self.now - pressStart >= Self.holdDuration {
+                    holding = true
+                    hover()
+                }
+                return
+            }
+            holding = false
             dragging = true
             onDragBegan()
         }
@@ -208,6 +229,10 @@ final class PetSpriteView: NSView {
             dragging = false
             change { $0.endDrag(at: $1) }
             onDragEnded()
+        } else if holding || Self.now - pressStart >= Self.holdDuration {
+            holding = false
+            guard let window else { return }
+            onMenu(convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil))
         } else {
             onClick()
         }

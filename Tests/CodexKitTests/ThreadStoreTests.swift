@@ -64,9 +64,10 @@ final class ThreadStoreTests: XCTestCase {
         await store.refresh()
         XCTAssertEqual(store.threads.map(\.status), [.idle], "looked at in its own app after the reply")
 
+        let fresh = ThreadStore(providers: [provider], persist: false)
         provider.threads = [thread(.idle, endedAgo: 60, seenAgo: 90)]
-        await store.refresh()
-        XCTAssertEqual(store.threads.map(\.status), [.ready], "last looked at before the reply")
+        await fresh.refresh()
+        XCTAssertEqual(fresh.threads.map(\.status), [.ready], "last looked at before the reply")
 
         provider.threads = [thread(.ready, endedAgo: 60, seenAgo: 10)]
         await store.refresh()
@@ -124,5 +125,23 @@ final class ThreadStoreTests: XCTestCase {
         provider.threads = [thread(.idle, endedAgo: -1)]
         await store.refresh()
         XCTAssertEqual(store.threads.map(\.status), [.ready], "a reply that lands after hiding brings it back")
+    }
+
+    /// Claude.app reports "on screen" only while it's in front; once seen, the thread must not flip back.
+    func testSeenInTheToolSticks() async {
+        let provider = FakeProvider()
+        let store = ThreadStore(providers: [provider], persist: false)
+        let ended = Date().addingTimeInterval(-60)
+        func at(seen: Date?) -> AgentThread {
+            AgentThread(platform: .codex, nativeId: "t1", surface: .desktop, title: "T", status: .idle,
+                        updatedAt: ended, lastTurnEndedAt: ended, seenAt: seen)
+        }
+        provider.threads = [at(seen: ended)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.idle])
+
+        provider.threads = [at(seen: nil)]
+        await store.refresh()
+        XCTAssertEqual(store.threads.map(\.status), [.idle], "the tool stopped saying so; still seen")
     }
 }

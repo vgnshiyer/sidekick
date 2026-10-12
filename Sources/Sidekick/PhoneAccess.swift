@@ -392,7 +392,8 @@ enum Tailscale {
 
 /// Turns thread status changes into phone notifications: a thread that starts needing the user,
 /// finishes, or fails. The first look at the threads only sets the baseline, so launching
-/// Sidekick never replays old states, and the same news for a thread is sent at most once a minute.
+/// Sidekick never replays old states. A finished or failed turn is announced once, however its
+/// status flickers afterwards; "needs input" at most once every ten minutes per thread.
 @MainActor
 final class PushNotifier {
     private let push: PushCenter
@@ -412,16 +413,22 @@ final class PushNotifier {
         }
         guard primed, sending else { return }
         let now = Date()
-        sentAt = sentAt.filter { now.timeIntervalSince($0.value) < 60 }
+        sentAt = sentAt.filter { now.timeIntervalSince($0.value) < 24 * 3600 }
         for thread in threads {
             guard let before = last[thread.id], before != thread.status,
                   let notification = Self.notification(for: thread) else { continue }
-            let key = "\(thread.id)|\(thread.status.rawValue)"
-            guard sentAt[key] == nil else { continue }
+            let key = Self.key(for: thread)
+            if let sent = sentAt[key], thread.status != .needsInput || now.timeIntervalSince(sent) < 600 { continue }
             sentAt[key] = now
             let push = push
             Task { await push.send(notification) }
         }
+    }
+
+    /// Which news this is: the thread, its status and, for a finished or failed turn, that turn.
+    static func key(for thread: AgentThread) -> String {
+        let turn = thread.status == .needsInput ? "" : thread.lastTurnEndedAt.map { "\($0.timeIntervalSince1970)" } ?? ""
+        return "\(thread.id)|\(thread.status.rawValue)|\(turn)"
     }
 
     static func notification(for thread: AgentThread) -> PushNotification? {

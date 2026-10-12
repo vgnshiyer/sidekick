@@ -80,6 +80,12 @@ public final class ThreadStore: ObservableObject {
                 acks[t.id] = end
                 acked = true
             }
+            // Seen in the tool itself sticks, even once the tool stops saying so (Claude.app's
+            // "on screen" lasts only while it's in front); otherwise the thread flips back to ready.
+            if let seenAt = t.seenAt, (acks[t.id] ?? .distantPast) < seenAt {
+                acks[t.id] = seenAt
+                acked = true
+            }
             let firstSeen = sightings[t.id]?.first ?? now
             sightings[t.id] = (firstSeen, now)
             // Seen here (acknowledged) or in the tool itself, whichever is later.

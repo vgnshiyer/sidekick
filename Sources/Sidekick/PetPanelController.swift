@@ -58,7 +58,7 @@ final class PetPanelController {
     var onOpenThread: (AgentThread) -> Void = { _ in }
     /// Hide, from a bubble's right-click menu.
     var onHideThread: (AgentThread) -> Void = { _ in }
-    /// Hide Pet, from the pet's right-click menu.
+    /// Hide Pet, from the pet's menu (right-click, Control-click, or press and hold).
     var onHidePet: () -> Void = {}
     /// The pet was clicked or started moving; the chat should get out of the way.
     var onPetInteraction: () -> Void = {}
@@ -85,11 +85,12 @@ final class PetPanelController {
             self?.relayout()
             self?.toggleCollapsed()
         }
-        spriteView.onRightClick = { [weak self, weak spriteView] event in
+        spriteView.onMenu = { [weak self, weak spriteView] point in
             guard let self, let spriteView else { return }
             let menu = NSMenu()
             menu.addItem(ClosureMenuItem(title: "Hide Pet") { [weak self] in self?.onHidePet() })
-            NSMenu.popUpContextMenu(menu, with: event, for: spriteView)
+            // A context menu from an app that isn't active closes at once; a positioned pop-up stays.
+            menu.popUp(positioning: nil, at: point, in: spriteView)
         }
         spriteView.onDragBegan = { [weak self] in
             guard let self else { return }
@@ -372,3 +373,4 @@ private final class ClosureMenuItem: NSMenuItem {
 
     @objc private func run() { handler() }
 }
+
